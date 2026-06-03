@@ -7,12 +7,12 @@
 ```mermaid
 flowchart TD
     subgraph before[移动前]
-        A1[string a\nptr → 数据\nsize=11]
-        B1[string b\n未初始化]
+        A1["string a\nptr=数据  size=11"]
+        B1["string b（未初始化）"]
     end
     subgraph after[移动后]
-        A2[string a\nptr → nullptr\nsize=0]
-        B2[string b\nptr → 数据\nsize=11]
+        A2["string a\nptr=null  size=0"]
+        B2["string b\nptr=数据  size=11"]
     end
     before -->|std::move| after
     style A2 fill:#9E9E9E,color:#fff
@@ -34,10 +34,10 @@ std::string c = std::move(a);  // 移动：把 a 的指针直接给 c，a 置空
 
 ```mermaid
 flowchart LR
-    V[表达式] --> LV[左值 lvalue\n有名字，有地址\n可以取地址\n例：变量 x]
-    V --> RV[右值 rvalue\n临时对象，无持久地址\n例：5、x+1、函数返回值]
-    LV --> LR[左值引用 T&]
-    RV --> RR[右值引用 T&&]
+    V[表达式] --> LV["左值 lvalue\n有名字、有地址\n例：变量 x"]
+    V --> RV["右值 rvalue\n临时对象、无持久地址\n例：5、x+1"]
+    LV --> LR["左值引用 T&"]
+    RV --> RR["右值引用 T&&"]
 ```
 
 ```cpp

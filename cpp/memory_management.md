@@ -8,8 +8,8 @@
 
 ```mermaid
 flowchart TD
-    A[进入作用域\n构造对象\n获取资源] --> B{函数执行}
-    B -->|正常返回| C[离开作用域\n析构函数执行\n资源自动释放]
+    A["构造函数：获取资源"] --> B{函数执行}
+    B -->|正常返回| C["析构函数：释放资源"]
     B -->|抛出异常| C
     style A fill:#4CAF50,color:#fff
     style C fill:#2196F3,color:#fff
@@ -105,12 +105,12 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    Q{这个资源有几个所有者？}
-    Q -->|一个| U[unique_ptr\n零开销，等于裸指针]
-    Q -->|多个| S[shared_ptr\n有控制块，引用计数原子操作]
-    S --> CQ{有循环引用？}
-    CQ -->|是| W[反向持有改成 weak_ptr]
-    CQ -->|否| OK[正常使用]
+    Q{"资源有几个所有者？"}
+    Q -->|一个| U["unique_ptr\n（零开销）"]
+    Q -->|多个| S["shared_ptr\n（引用计数）"]
+    S --> CQ{"有循环引用？"}
+    CQ -->|是| W["weak_ptr 打破循环"]
+    CQ -->|否| OK["正常使用"]
     style U fill:#4CAF50,color:#fff
     style S fill:#FF9800,color:#fff
     style W fill:#2196F3,color:#fff
@@ -182,10 +182,10 @@ b->prev = a;   // a 引用计数 = 2
 
 ```mermaid
 flowchart LR
-    subgraph A[节点 a\n引用计数=2]
+    subgraph A["节点 a（引用计数=2）"]
         AN[next]
     end
-    subgraph B[节点 b\n引用计数=2]
+    subgraph B["节点 b（引用计数=2）"]
         BP[prev]
     end
     AN -->|shared_ptr| B
@@ -205,10 +205,10 @@ struct Node {
 
 ```mermaid
 flowchart LR
-    subgraph A[节点 a\n引用计数=1]
+    subgraph A["节点 a（引用计数=1）"]
         AN[next]
     end
-    subgraph B[节点 b\n引用计数=1]
+    subgraph B["节点 b（引用计数=1）"]
         BP[prev]
     end
     AN -->|shared_ptr| B
