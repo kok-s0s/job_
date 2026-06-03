@@ -1,0 +1,18 @@
+{
+  "name": "job_",
+  "version": "1.0.0",
+  "description": "从机械臂客户端开发跳槽到**具身智能 / 人形机器人**方向。",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17"
+  }
+}
