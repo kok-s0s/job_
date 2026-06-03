@@ -5,10 +5,9 @@ export default withMermaid(
   defineConfig({
     title: '求职准备',
     description: '具身智能 / 人形机器人方向 C++ 跳槽笔记',
-    base: '/job_/',
     lang: 'zh-CN',
 
-    head: [['link', { rel: 'icon', href: '/job_/favicon.ico' }]],
+    head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
 
     themeConfig: {
       nav: [
