@@ -25,6 +25,7 @@ export default withMermaid(
             items: [
               { text: '内存管理 & RAII', link: '/cpp/memory_management' },
               { text: '移动语义', link: '/cpp/move_semantics' },
+              { text: '并发', link: '/cpp/concurrency' },
             ],
           },
         ],
