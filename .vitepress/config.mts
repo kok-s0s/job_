@@ -27,6 +27,7 @@ export default withMermaid(
               { text: '移动语义', link: '/cpp/move_semantics' },
               { text: '并发', link: '/cpp/concurrency' },
               { text: '虚函数', link: '/cpp/virtual_functions' },
+              { text: '模板', link: '/cpp/templates' },
             ],
           },
         ],
