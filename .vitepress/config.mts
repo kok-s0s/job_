@@ -29,6 +29,7 @@ export default withMermaid(
               { text: '虚函数', link: '/cpp/virtual_functions' },
               { text: '模板', link: '/cpp/templates' },
               { text: '性能优化', link: '/cpp/performance' },
+              { text: '设计模式', link: '/cpp/design_patterns' },
             ],
           },
         ],
