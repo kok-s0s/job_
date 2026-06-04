@@ -7,7 +7,7 @@ export default withMermaid(
     description: '具身智能 / 人形机器人方向 C++ 跳槽笔记',
     lang: 'zh-CN',
 
-    head: [['link', { rel: 'icon', href: '/favicon.ico' }]],
+    head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]],
 
     themeConfig: {
       nav: [
@@ -28,6 +28,7 @@ export default withMermaid(
               { text: '并发', link: '/cpp/concurrency' },
               { text: '虚函数', link: '/cpp/virtual_functions' },
               { text: '模板', link: '/cpp/templates' },
+              { text: '性能优化', link: '/cpp/performance' },
             ],
           },
         ],
