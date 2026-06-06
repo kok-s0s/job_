@@ -34,6 +34,7 @@ export default withMermaid(
               { text: 'STL 容器', link: '/cpp/stl_containers' },
               { text: '网络编程', link: '/cpp/network_programming' },
               { text: '进程间通信 IPC', link: '/cpp/ipc' },
+              { text: '编译、链接与 CMake', link: '/cpp/build_and_cmake' },
             ],
           },
         ],
