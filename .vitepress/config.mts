@@ -31,6 +31,7 @@ export default withMermaid(
               { text: '性能优化', link: '/cpp/performance' },
               { text: '设计模式', link: '/cpp/design_patterns' },
               { text: 'Lambda 与函数式', link: '/cpp/lambda_and_functional' },
+              { text: 'STL 容器', link: '/cpp/stl_containers' },
             ],
           },
         ],
