@@ -33,6 +33,7 @@ export default withMermaid(
               { text: 'Lambda 与函数式', link: '/cpp/lambda_and_functional' },
               { text: 'STL 容器', link: '/cpp/stl_containers' },
               { text: '网络编程', link: '/cpp/network_programming' },
+              { text: '进程间通信 IPC', link: '/cpp/ipc' },
             ],
           },
         ],
