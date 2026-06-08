@@ -35,6 +35,7 @@ export default withMermaid(
               { text: '网络编程', link: '/cpp/network_programming' },
               { text: '进程间通信 IPC', link: '/cpp/ipc' },
               { text: '编译、链接与 CMake', link: '/cpp/build_and_cmake' },
+              { text: '调试工具', link: '/cpp/debugging' },
             ],
           },
         ],
