@@ -40,6 +40,7 @@ export default withMermaid(
               { text: 'Qt 与 QML', link: '/cpp/qt_and_qml' },
               { text: 'ROS2 基础', link: '/cpp/ros2_basics' },
               { text: 'Python 速成', link: '/cpp/python_for_cpp_dev' },
+              { text: 'Linux 系统编程', link: '/cpp/linux_system' },
             ],
           },
         ],
