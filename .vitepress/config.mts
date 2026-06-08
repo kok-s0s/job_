@@ -41,6 +41,7 @@ export default withMermaid(
               { text: 'ROS2 基础', link: '/cpp/ros2_basics' },
               { text: 'Python 速成', link: '/cpp/python_for_cpp_dev' },
               { text: 'Linux 系统编程', link: '/cpp/linux_system' },
+              { text: 'OpenCV 基础', link: '/cpp/opencv_basics' },
             ],
           },
         ],
