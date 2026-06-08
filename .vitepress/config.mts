@@ -39,6 +39,7 @@ export default withMermaid(
               { text: '数据结构与算法', link: '/cpp/algorithms' },
               { text: 'Qt 与 QML', link: '/cpp/qt_and_qml' },
               { text: 'ROS2 基础', link: '/cpp/ros2_basics' },
+              { text: 'Python 速成', link: '/cpp/python_for_cpp_dev' },
             ],
           },
         ],
