@@ -43,6 +43,7 @@ export default withMermaid(
               { text: 'Linux 系统编程', link: '/cpp/linux_system' },
               { text: 'OpenCV 基础', link: '/cpp/opencv_basics' },
               { text: '传感器基础', link: '/cpp/sensors' },
+              { text: 'Git 工作流', link: '/cpp/git_workflow' },
             ],
           },
         ],
