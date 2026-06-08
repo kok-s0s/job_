@@ -37,6 +37,7 @@ export default withMermaid(
               { text: '编译、链接与 CMake', link: '/cpp/build_and_cmake' },
               { text: '调试工具', link: '/cpp/debugging' },
               { text: '数据结构与算法', link: '/cpp/algorithms' },
+              { text: 'Qt 与 QML', link: '/cpp/qt_and_qml' },
             ],
           },
         ],
