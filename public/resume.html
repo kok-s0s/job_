@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简历生成器</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #f0f2f5;
+  color: #1a1a1a;
+}
+
+/* ── 布局 ── */
+.app { display: flex; height: 100vh; }
+
+.panel-form {
+  width: 380px;
+  min-width: 380px;
+  background: #1e1e2e;
+  color: #cdd6f4;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.panel-preview {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 30px 20px;
+  background: #e8eaf0;
+}
+
+/* ── 表单样式 ── */
+.panel-form h2 {
+  color: #89b4fa;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #313244;
+}
+
+.form-section { display: flex; flex-direction: column; gap: 8px; }
+
+label { font-size: 12px; color: #a6adc8; }
+
+input, textarea, select {
+  width: 100%;
+  padding: 7px 10px;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  color: #cdd6f4;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .2s;
+}
+input:focus, textarea:focus { border-color: #89b4fa; }
+textarea { resize: vertical; min-height: 70px; }
+
+.btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: opacity .2s;
+}
+.btn:hover { opacity: .85; }
+.btn-add  { background: #313244; color: #89b4fa; border: 1px dashed #89b4fa; width: 100%; }
+.btn-del  { background: #f38ba8; color: #fff; padding: 5px 10px; font-size: 12px; }
+.btn-print{ background: #a6e3a1; color: #1e1e2e; font-weight: 600; width: 100%; padding: 10px; font-size: 14px; }
+
+.entry-card {
+  background: #27273a;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+.entry-header { display: flex; justify-content: space-between; align-items: center; }
+.entry-label { font-size: 12px; color: #89b4fa; font-weight: 600; }
+
+.skill-row { display: flex; gap: 6px; align-items: center; }
+.skill-row input { flex: 1; }
+
+/* ── 简历预览 ── */
+.resume {
+  width: 794px;
+  min-height: 1123px;
+  background: #fff;
+  box-shadow: 0 4px 24px rgba(0,0,0,.18);
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.resume-header {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 28px 36px 22px;
+}
+
+.resume-name {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+.resume-target {
+  color: #4ade80;
+  font-size: 14px;
+  margin-bottom: 14px;
+  letter-spacing: .5px;
+}
+
+.resume-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  font-size: 12px;
+  color: #c0c8e0;
+}
+
+.resume-contacts span::before { margin-right: 4px; }
+
+.resume-body { padding: 20px 36px 30px; display: flex; flex-direction: column; gap: 18px; }
+
+.resume-section {}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a2e;
+  border-bottom: 2px solid #4ade80;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 技能 */
+.skills-grid { display: flex; flex-direction: column; gap: 6px; }
+.skill-group { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.skill-group-name { font-size: 12px; color: #666; min-width: 70px; flex-shrink: 0; }
+.skill-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.skill-tag {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* 经历条目 */
+.exp-entry { margin-bottom: 14px; }
+.exp-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2px; }
+.exp-title { font-weight: 700; font-size: 13.5px; }
+.exp-date { font-size: 12px; color: #888; white-space: nowrap; }
+.exp-sub { color: #555; font-size: 12.5px; margin-bottom: 4px; }
+.exp-desc { color: #333; font-size: 12.5px; padding-left: 0; }
+.exp-desc li {
+  list-style: none;
+  padding-left: 14px;
+  position: relative;
+  margin-bottom: 2px;
+}
+.exp-desc li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: #4ade80;
+  font-size: 11px;
+  top: 1px;
+}
+
+/* 教育 */
+.edu-entry { display: flex; justify-content: space-between; align-items: baseline; }
+.edu-main { font-weight: 700; }
+.edu-sub { font-size: 12px; color: #666; }
+
+/* ── 打印 ── */
+@media print {
+  .panel-form { display: none !important; }
+  .panel-preview { padding: 0; background: #fff; }
+  body { background: #fff; }
+  .app { display: block; height: auto; }
+  .resume { box-shadow: none; border-radius: 0; width: 100%; min-height: auto; }
+  @page { margin: 0; size: A4; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ 左侧表单 ══ -->
+<div class="panel-form">
+  <h2>📄 简历生成器</h2>
+
+  <!-- 基本信息 -->
+  <div class="form-section">
+    <h2>基本信息</h2>
+    <label>姓名</label>
+    <input id="f-name" type="text" placeholder="张三" value="">
+    <label>求职意向</label>
+    <input id="f-target" type="text" placeholder="C++ 机器人软件工程师" value="">
+    <label>电话</label>
+    <input id="f-phone" type="text" placeholder="138-0000-0000">
+    <label>邮箱</label>
+    <input id="f-email" type="text" placeholder="name@gmail.com">
+    <label>城市</label>
+    <input id="f-city" type="text" placeholder="上海">
+    <label>GitHub / 个人网站</label>
+    <input id="f-github" type="text" placeholder="github.com/username">
+  </div>
+
+  <!-- 技能 -->
+  <div class="form-section">
+    <h2>技能</h2>
+    <div id="skills-list"></div>
+    <button class="btn btn-add" onclick="addSkillGroup()">＋ 添加技能组</button>
+  </div>
+
+  <!-- 工作经历 -->
+  <div class="form-section">
+    <h2>工作经历</h2>
+    <div id="exp-list"></div>
+    <button class="btn btn-add" onclick="addExp()">＋ 添加工作经历</button>
+  </div>
+
+  <!-- 项目经历 -->
+  <div class="form-section">
+    <h2>项目经历</h2>
+    <div id="proj-list"></div>
+    <button class="btn btn-add" onclick="addProj()">＋ 添加项目</button>
+  </div>
+
+  <!-- 教育背景 -->
+  <div class="form-section">
+    <h2>教育背景</h2>
+    <div id="edu-list"></div>
+    <button class="btn btn-add" onclick="addEdu()">＋ 添加教育经历</button>
+  </div>
+
+  <button class="btn btn-print" onclick="window.print()">🖨 打印 / 导出 PDF</button>
+</div>
+
+<!-- ══ 右侧预览 ══ -->
+<div class="panel-preview">
+  <div class="resume" id="resume">
+    <div class="resume-header">
+      <div class="resume-name" id="r-name">姓名</div>
+      <div class="resume-target" id="r-target">求职意向</div>
+      <div class="resume-contacts" id="r-contacts"></div>
+    </div>
+    <div class="resume-body">
+      <div class="resume-section" id="r-skills-section">
+        <div class="section-title">技能</div>
+        <div class="skills-grid" id="r-skills"></div>
+      </div>
+      <div class="resume-section" id="r-exp-section">
+        <div class="section-title">工作经历</div>
+        <div id="r-exp"></div>
+      </div>
+      <div class="resume-section" id="r-proj-section">
+        <div class="section-title">项目经历</div>
+        <div id="r-proj"></div>
+      </div>
+      <div class="resume-section" id="r-edu-section">
+        <div class="section-title">教育背景</div>
+        <div id="r-edu"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ── 数据 ──
+let data = {
+  skills: [
+    { name: '编程语言', tags: 'C++17, Python 3, Shell' },
+    { name: '框架 / 库', tags: 'Qt/QML, ROS2, OpenCV, ZeroMQ, PCL' },
+    { name: '系统 / 工具', tags: 'Linux, CMake, Git, GDB, Docker' },
+  ],
+  exps: [
+    {
+      title: '客户端软件工程师',
+      company: '某机械臂公司',
+      date: '2022.07 — 至今',
+      desc: `负责机械臂上位机软件开发，使用 C++/Qt 实现运动控制界面
+优化多线程通信架构，降低界面卡顿率 80%
+集成相机 SDK，实现实时视觉引导抓取功能`
+    }
+  ],
+  projs: [
+    {
+      title: 'ROS2 机器人导航仿真系统',
+      tech: 'ROS2 Humble · C++ · Qt QML · Gazebo · Nav2',
+      date: '2025.03 — 2025.05',
+      desc: `基于 Gazebo 仿真环境搭建移动机器人导航系统，集成 Nav2 导航栈
+使用 Qt QML 开发实时监控界面，通过 rosbridge 接收导航状态数据
+实现路径规划可视化、障碍物地图实时渲染`
+    }
+  ],
+  edus: [
+    { school: '某某大学', major: '计算机科学与技术', degree: '本科', date: '2018 — 2022' }
+  ]
+};
+
+// ── 渲染表单 ──
+function renderForms() {
+  // 技能
+  const sl = document.getElementById('skills-list');
+  sl.innerHTML = data.skills.map((s, i) => `
+    <div class="entry-card">
+      <div class="entry-header">
+        <span class="entry-label">技能组 ${i+1}</span>
+        <button class="btn btn-del" onclick="delItem('skills',${i})">删除</button>
+      </div>
+      <label>分类名称</label>
+      <input value="${s.name}" oninput="data.skills[${i}].name=this.value;renderPreview()">
+      <label>技能（逗号分隔）</label>
+      <input value="${s.tags}" oninput="data.skills[${i}].tags=this.value;renderPreview()">
+    </div>`).join('');
+
+  // 工作经历
+  const el = document.getElementById('exp-list');
+  el.innerHTML = data.exps.map((e, i) => `
+    <div class="entry-card">
+      <div class="entry-header">
+        <span class="entry-label">经历 ${i+1}</span>
+        <button class="btn btn-del" onclick="delItem('exps',${i})">删除</button>
+      </div>
+      <label>职位名称</label>
+      <input value="${e.title}" oninput="data.exps[${i}].title=this.value;renderPreview()">
+      <label>公司名称</label>
+      <input value="${e.company}" oninput="data.exps[${i}].company=this.value;renderPreview()">
+      <label>时间段</label>
+      <input value="${e.date}" oninput="data.exps[${i}].date=this.value;renderPreview()">
+      <label>工作内容（每行一条，自动加▸）</label>
+      <textarea oninput="data.exps[${i}].desc=this.value;renderPreview()">${e.desc}</textarea>
+    </div>`).join('');
+
+  // 项目经历
+  const pl = document.getElementById('proj-list');
+  pl.innerHTML = data.projs.map((p, i) => `
+    <div class="entry-card">
+      <div class="entry-header">
+        <span class="entry-label">项目 ${i+1}</span>
+        <button class="btn btn-del" onclick="delItem('projs',${i})">删除</button>
+      </div>
+      <label>项目名称</label>
+      <input value="${p.title}" oninput="data.projs[${i}].title=this.value;renderPreview()">
+      <label>技术栈</label>
+      <input value="${p.tech}" oninput="data.projs[${i}].tech=this.value;renderPreview()">
+      <label>时间段</label>
+      <input value="${p.date}" oninput="data.projs[${i}].date=this.value;renderPreview()">
+      <label>项目描述（每行一条）</label>
+      <textarea oninput="data.projs[${i}].desc=this.value;renderPreview()">${p.desc}</textarea>
+    </div>`).join('');
+
+  // 教育
+  const edu = document.getElementById('edu-list');
+  edu.innerHTML = data.edus.map((e, i) => `
+    <div class="entry-card">
+      <div class="entry-header">
+        <span class="entry-label">学历 ${i+1}</span>
+        <button class="btn btn-del" onclick="delItem('edus',${i})">删除</button>
+      </div>
+      <label>学校名称</label>
+      <input value="${e.school}" oninput="data.edus[${i}].school=this.value;renderPreview()">
+      <label>专业</label>
+      <input value="${e.major}" oninput="data.edus[${i}].major=this.value;renderPreview()">
+      <label>学历（本科/硕士）</label>
+      <input value="${e.degree}" oninput="data.edus[${i}].degree=this.value;renderPreview()">
+      <label>时间段</label>
+      <input value="${e.date}" oninput="data.edus[${i}].date=this.value;renderPreview()">
+    </div>`).join('');
+}
+
+// ── 渲染预览 ──
+function renderPreview() {
+  const name   = document.getElementById('f-name').value   || '姓名';
+  const target = document.getElementById('f-target').value || '求职意向';
+  const phone  = document.getElementById('f-phone').value;
+  const email  = document.getElementById('f-email').value;
+  const city   = document.getElementById('f-city').value;
+  const github = document.getElementById('f-github').value;
+
+  document.getElementById('r-name').textContent   = name;
+  document.getElementById('r-target').textContent = target;
+
+  const contacts = [
+    phone  && `📱 ${phone}`,
+    email  && `✉️ ${email}`,
+    city   && `📍 ${city}`,
+    github && `🔗 ${github}`,
+  ].filter(Boolean).map(c => `<span>${c}</span>`).join('');
+  document.getElementById('r-contacts').innerHTML = contacts;
+
+  // 技能
+  document.getElementById('r-skills').innerHTML = data.skills
+    .filter(s => s.name || s.tags)
+    .map(s => `
+      <div class="skill-group">
+        <span class="skill-group-name">${s.name}</span>
+        <div class="skill-tags">
+          ${s.tags.split(/[,，]/).map(t => t.trim()).filter(Boolean)
+            .map(t => `<span class="skill-tag">${t}</span>`).join('')}
+        </div>
+      </div>`).join('');
+
+  // 工作经历
+  document.getElementById('r-exp').innerHTML = data.exps.map(e => `
+    <div class="exp-entry">
+      <div class="exp-header">
+        <span class="exp-title">${e.title}</span>
+        <span class="exp-date">${e.date}</span>
+      </div>
+      <div class="exp-sub">${e.company}</div>
+      <ul class="exp-desc">
+        ${e.desc.split('\n').filter(l => l.trim()).map(l => `<li>${l.trim()}</li>`).join('')}
+      </ul>
+    </div>`).join('');
+
+  // 项目经历
+  document.getElementById('r-proj').innerHTML = data.projs.map(p => `
+    <div class="exp-entry">
+      <div class="exp-header">
+        <span class="exp-title">${p.title}</span>
+        <span class="exp-date">${p.date}</span>
+      </div>
+      <div class="exp-sub">${p.tech}</div>
+      <ul class="exp-desc">
+        ${p.desc.split('\n').filter(l => l.trim()).map(l => `<li>${l.trim()}</li>`).join('')}
+      </ul>
+    </div>`).join('');
+
+  // 教育
+  document.getElementById('r-edu').innerHTML = data.edus.map(e => `
+    <div class="edu-entry">
+      <div>
+        <span class="edu-main">${e.school}</span>
+        <span class="edu-sub">  ${e.major} · ${e.degree}</span>
+      </div>
+      <span class="edu-sub">${e.date}</span>
+    </div>`).join('');
+}
+
+// ── 增删 ──
+function addSkillGroup() {
+  data.skills.push({ name: '', tags: '' });
+  renderForms(); renderPreview();
+}
+function addExp() {
+  data.exps.push({ title: '', company: '', date: '', desc: '' });
+  renderForms(); renderPreview();
+}
+function addProj() {
+  data.projs.push({ title: '', tech: '', date: '', desc: '' });
+  renderForms(); renderPreview();
+}
+function addEdu() {
+  data.edus.push({ school: '', major: '', degree: '本科', date: '' });
+  renderForms(); renderPreview();
+}
+function delItem(key, i) {
+  data[key].splice(i, 1);
+  renderForms(); renderPreview();
+}
+
+// ── 基本信息实时更新 ──
+['f-name','f-target','f-phone','f-email','f-city','f-github'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderPreview);
+});
+
+// ── 初始化 ──
+renderForms();
+renderPreview();
+</script>
+</body>
+</html>

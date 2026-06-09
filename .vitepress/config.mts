@@ -16,6 +16,7 @@ export default withMermaid(
         { text: '学习路线', link: '/roadmap/roadmap' },
         { text: '项目计划', link: '/projects/' },
         { text: 'JD 汇总', link: '/jd/' },
+        { text: '简历生成器', link: '/resume.html', target: '_blank' },
       ],
 
       sidebar: {
