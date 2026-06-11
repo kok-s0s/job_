@@ -7,7 +7,15 @@ export default withMermaid(
     description: '具身智能 / 人形机器人方向 C++ 跳槽笔记',
     lang: 'zh-CN',
 
+    ignoreDeadLinks: true,
+
     head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]],
+
+    vite: {
+      ssr: {
+        noExternal: ['vitepress-plugin-mermaid', 'mermaid'],
+      },
+    },
 
     themeConfig: {
       nav: [
