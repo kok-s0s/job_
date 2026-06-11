@@ -20,6 +20,9 @@ features:
   - icon: 🗺️
     title: 学习路线
     details: Mac 跑 C++/Python/Qt QML，Windows 跑 ROS2/仿真，12 周冲刺计划
+  - icon: 💰
+    title: 24k 月薪目标
+    details: 2026 年中国 C++ 机器人方向市场行情、技能层级与薪资锚点、你的差距地图
   - icon: 🤖
     title: 项目计划
     details: ROS2 多节点 Demo → ZMQ 通信框架 → 综合仿真项目，每步都能放简历
