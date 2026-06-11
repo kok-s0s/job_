@@ -13,6 +13,7 @@ export default withMermaid(
       nav: [
         { text: '首页', link: '/' },
         { text: 'C++ 专项', link: '/cpp/memory_management' },
+        { text: '动手实践', link: '/practice/pubsub_model' },
         { text: '学习路线', link: '/roadmap/roadmap' },
         { text: '24k 目标', link: '/roadmap/salary_target' },
         { text: '项目计划', link: '/projects/' },
@@ -71,6 +72,14 @@ export default withMermaid(
               { text: 'JD-006 后端 Java/Go', link: '/jd/jd_006_backend_java_go' },
               { text: 'JD-007 Linux 应用工程师', link: '/jd/jd_007_linux_application_engineer' },
               { text: 'JD-008 机器人软件工程师', link: '/jd/jd_008_robot_software_embodied' },
+            ],
+          },
+        ],
+        '/practice/': [
+          {
+            text: '动手实践',
+            items: [
+              { text: 'Pub/Sub 模型', link: '/practice/pubsub_model' },
             ],
           },
         ],
