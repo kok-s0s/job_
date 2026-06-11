@@ -79,7 +79,8 @@ export default withMermaid(
           {
             text: '动手实践',
             items: [
-              { text: 'Pub/Sub 模型', link: '/practice/pubsub_model' },
+              { text: '01 Pub/Sub 模型（Python）', link: '/practice/pubsub_model' },
+              { text: '02 ROS2 三节点 Demo', link: '/practice/ros2_three_nodes' },
             ],
           },
         ],
