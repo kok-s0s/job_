@@ -83,6 +83,16 @@ export default withMermaid(
               { text: '02 ROS2 三节点 Demo', link: '/practice/ros2_three_nodes' },
             ],
           },
+          {
+            text: '前端 × AI 集成',
+            items: [
+              { text: '浏览器端推理', link: '/practice/browser_inference' },
+              { text: 'AI SDK（Vercel）', link: '/practice/ai_sdk' },
+              { text: 'RAG 在前端的应用', link: '/practice/rag_frontend' },
+              { text: 'AI 交互组件', link: '/practice/ai_components' },
+              { text: 'Function Calling', link: '/practice/function_calling' },
+            ],
+          },
         ],
         '/projects/': [
           {
