@@ -14,6 +14,7 @@ export default withMermaid(
         { text: '首页', link: '/' },
         { text: 'C++ 专项', link: '/cpp/memory_management' },
         { text: '学习路线', link: '/roadmap/roadmap' },
+        { text: '24k 目标', link: '/roadmap/salary_target' },
         { text: '项目计划', link: '/projects/' },
         { text: 'JD 汇总', link: '/jd/' },
         { text: '简历生成器', link: '/resume.html', target: '_blank' },
@@ -51,7 +52,10 @@ export default withMermaid(
         '/roadmap/': [
           {
             text: '规划',
-            items: [{ text: '学习路线', link: '/roadmap/roadmap' }],
+            items: [
+              { text: '学习路线', link: '/roadmap/roadmap' },
+              { text: '24k 目标 & 知识储备', link: '/roadmap/salary_target' },
+            ],
           },
         ],
         '/jd/': [
