@@ -105,8 +105,15 @@ export default withMermaid(
         ],
         '/projects/': [
           {
-            text: '项目',
-            items: [{ text: '项目计划', link: '/projects/' }],
+            text: '项目计划',
+            items: [{ text: '阶段规划总览', link: '/projects/' }],
+          },
+          {
+            text: '个人兴趣项目',
+            items: [
+              { text: '方向一：音乐频谱可视化播放器', link: '/projects/music_visualizer' },
+              { text: '方向四：AI 番剧角色桌面助手', link: '/projects/desktop_ai_companion' },
+            ],
           },
         ],
       },
