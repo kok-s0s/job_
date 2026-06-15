@@ -93,6 +93,7 @@ export default withMermaid(
               { text: '04 TCP Echo Server（多线程）', link: '/practice/tcp_echo_server' },
               { text: '05 TCP Chat Server（广播）', link: '/practice/tcp_chat_server' },
               { text: '06 TCP Chat Server（线程池）', link: '/practice/tcp_chat_threadpool' },
+              { text: '07 TCP Chat Server（epoll）', link: '/practice/tcp_chat_epoll' },
             ],
           },
           {
