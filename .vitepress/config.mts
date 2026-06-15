@@ -90,6 +90,7 @@ export default withMermaid(
               { text: '01 Pub/Sub 模型（Python）', link: '/practice/pubsub_model' },
               { text: '02 ROS2 三节点 Demo', link: '/practice/ros2_three_nodes' },
               { text: '03 Service & Action', link: '/practice/ros2_service_action' },
+              { text: '04 TCP Echo Server（多线程）', link: '/practice/tcp_echo_server' },
             ],
           },
           {
