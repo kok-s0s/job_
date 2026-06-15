@@ -21,7 +21,7 @@ export default withMermaid(
       nav: [
         { text: '首页', link: '/' },
         { text: 'C++ 专项', link: '/cpp/memory_management' },
-        { text: '动手实践', link: '/practice/pubsub_model' },
+        { text: '动手实践', link: '/practice/' },
         { text: '学习路线', link: '/roadmap/roadmap' },
         { text: '24k 目标', link: '/roadmap/salary_target' },
         { text: '项目计划', link: '/projects/' },
@@ -87,6 +87,7 @@ export default withMermaid(
           {
             text: '动手实践',
             items: [
+              { text: '总览', link: '/practice/' },
               { text: '01 Pub/Sub 模型（Python）', link: '/practice/pubsub_model' },
               { text: '02 ROS2 三节点 Demo', link: '/practice/ros2_three_nodes' },
               { text: '03 Service & Action', link: '/practice/ros2_service_action' },
@@ -96,6 +97,7 @@ export default withMermaid(
               { text: '07 TCP Chat Server（epoll）', link: '/practice/tcp_chat_epoll' },
               { text: '08 状态机（机械臂场景）', link: '/practice/state_machine' },
               { text: '09 线程安全队列（MPMC）', link: '/practice/blocking_queue' },
+              { text: '10 共享内存 IPC', link: '/practice/shm_ipc' },
             ],
           },
           {
