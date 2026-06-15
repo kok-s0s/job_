@@ -95,6 +95,7 @@ export default withMermaid(
               { text: '06 TCP Chat Server（线程池）', link: '/practice/tcp_chat_threadpool' },
               { text: '07 TCP Chat Server（epoll）', link: '/practice/tcp_chat_epoll' },
               { text: '08 状态机（机械臂场景）', link: '/practice/state_machine' },
+              { text: '09 线程安全队列（MPMC）', link: '/practice/blocking_queue' },
             ],
           },
           {
