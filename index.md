@@ -23,9 +23,6 @@ features:
   - icon: ⚡
     title: 动手实践
     details: 可直接运行的代码示例 + 架构图解，从 Python 到 ROS2 逐步迁移，看一遍能跑起来
-  - icon: 💰
-    title: 24k 月薪目标
-    details: 2026 年中国 C++ 机器人方向市场行情、技能层级与薪资锚点、你的差距地图
   - icon: 🤖
     title: 项目计划
     details: ROS2 多节点 Demo → ZMQ 通信框架 → 综合仿真项目，每步都能放简历
