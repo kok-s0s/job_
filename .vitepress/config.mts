@@ -6,6 +6,7 @@ export default withMermaid(
     title: '求职准备',
     description: '具身智能 / 人形机器人方向 C++ 跳槽笔记',
     lang: 'zh-CN',
+    base: '/job_/',
 
     ignoreDeadLinks: true,
 
