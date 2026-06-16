@@ -98,6 +98,7 @@ export default withMermaid(
               { text: '08 状态机（机械臂场景）', link: '/practice/state_machine' },
               { text: '09 线程安全队列（MPMC）', link: '/practice/blocking_queue' },
               { text: '10 共享内存 IPC', link: '/practice/shm_ipc' },
+              { text: '11 Observer 模式', link: '/practice/observer' },
             ],
           },
           {

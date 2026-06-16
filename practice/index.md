@@ -91,6 +91,19 @@
 
 </div>
 
+## OOP 设计模式
+
+<div class="pg">
+
+<a class="pc" href="/practice/observer">
+  <div class="pc-num">11</div>
+  <div class="pc-title">Observer 模式</div>
+  <div class="pc-desc">Subject / Observer 接口分离，状态机事件广播，Qt signals/slots 底层思路</div>
+  <div class="tags"><span class="tag">OOP</span><span class="tag">virtual</span><span class="tag">template</span></div>
+</a>
+
+</div>
+
 ## C++ 并发 & 数据结构
 
 <div class="pg">
