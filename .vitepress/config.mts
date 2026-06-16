@@ -99,6 +99,7 @@ export default withMermaid(
               { text: '09 线程安全队列（MPMC）', link: '/practice/blocking_queue' },
               { text: '10 共享内存 IPC', link: '/practice/shm_ipc' },
               { text: '11 Observer 模式', link: '/practice/observer' },
+              { text: '12 RoboMon（落地项目）', link: '/practice/robocon' },
             ],
           },
           {

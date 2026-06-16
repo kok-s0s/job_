@@ -2,6 +2,19 @@
 
 从 ROS2 入门到 C++ 并发、网络编程、IPC——按故事线递进，每个项目都能编译运行。
 
+## 落地项目
+
+<div class="pg">
+
+<a class="pc" href="/practice/robocon">
+  <div class="pc-num">12</div>
+  <div class="pc-title">RoboMon — 机械臂仿真控制台</div>
+  <div class="pc-desc">把状态机 / 多线程 / BlockingQueue / Observer 全部组合，终端交互控制机械臂工作流，传感器实时回显</div>
+  <div class="tags"><span class="tag">落地</span><span class="tag">state machine</span><span class="tag">多线程</span><span class="tag">ANSI</span></div>
+</a>
+
+</div>
+
 <style>
 .pg {
   display: grid;
