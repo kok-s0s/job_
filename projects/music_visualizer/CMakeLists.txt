@@ -16,6 +16,10 @@ qt_add_executable(MusicVisualizer
     src/main.cpp
     src/AudioAnalyzer.cpp
     src/AudioAnalyzer.h
+    src/LyricsParser.cpp
+    src/LyricsParser.h
+    src/NcmDecoder.cpp
+    src/NcmDecoder.h
 )
 
 qt_add_qml_module(MusicVisualizer
@@ -35,5 +39,7 @@ target_link_libraries(MusicVisualizer PRIVATE
     Qt6::Multimedia
     Qt6::Quick
     Qt6::QuickControls2
-    "-framework Accelerate"   # macOS built-in FFT via vDSP
+    "-framework Accelerate"         # FFT via vDSP
+    "-framework Security"           # (transitive dep of CommonCrypto)
+    "-framework CoreFoundation"
 )

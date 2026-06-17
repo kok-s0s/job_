@@ -3,30 +3,26 @@
 #include <QObject>
 #include <QList>
 #include <QVector>
-#include <QPair>
 #include <QAudioDecoder>
 #include <Accelerate/Accelerate.h>
 
-// Decodes an audio file to mono PCM, computes real-time FFT via macOS vDSP,
-// and exposes a 64-bin spectrum to QML via Q_PROPERTY.
-//
-// Usage:
-//   analyzer.analyzeFile(url)    → triggers decode + FFT of whole file
-//   analyzer.seekTo(positionMs)  → updates spectrum[] to match playback position
 class AudioAnalyzer : public QObject {
     Q_OBJECT
     Q_PROPERTY(QList<qreal> spectrum READ spectrum NOTIFY spectrumChanged)
+    Q_PROPERTY(QList<qreal> waveform READ waveform NOTIFY spectrumChanged)
     Q_PROPERTY(bool         busy     READ busy     NOTIFY busyChanged)
 
 public:
-    static constexpr int BINS  = 64;    // display bars
-    static constexpr int FFT_N = 2048;  // FFT window size
-    static constexpr int HOP   = 512;   // hop between frames (~11.6ms at 44100Hz)
+    static constexpr int BINS     = 64;
+    static constexpr int FFT_N    = 2048;
+    static constexpr int HOP      = 512;
+    static constexpr int WAVE_PTS = 256;  // waveform points exposed to QML
 
     explicit AudioAnalyzer(QObject* parent = nullptr);
     ~AudioAnalyzer() override;
 
     QList<qreal> spectrum() const { return m_spectrum; }
+    QList<qreal> waveform() const { return m_waveform; }
     bool         busy()     const { return m_busy; }
 
     Q_INVOKABLE void analyzeFile(const QUrl& url);
@@ -45,19 +41,21 @@ private:
     void processBuffer(const QAudioBuffer& buf);
     void buildFrame(qint64 frameMs);
 
-    QAudioDecoder*   m_decoder;
-    QList<qreal>     m_spectrum;
-    QVector<float>   m_pcm;            // rolling PCM accumulator
-    qint64           m_samplesIn{0};   // total samples consumed so far
+    struct Frame {
+        qint64        timeMs;
+        QVector<float> spec;   // BINS values
+        QVector<float> wave;   // WAVE_PTS values, normalized -1..1
+    };
 
-    // Pre-computed spectrum timeline: (timeMs, 64 bins)
-    QVector<QPair<qint64, QVector<float>>> m_frames;
+    QAudioDecoder*  m_decoder;
+    QList<qreal>    m_spectrum;
+    QList<qreal>    m_waveform;
+    QVector<float>  m_pcm;
+    qint64          m_samplesIn{0};
+    QVector<Frame>  m_frames;
 
-    // vDSP FFT state
-    FFTSetup       m_fftSetup;
-    QVector<float> m_window;   // Hann window, length FFT_N
-    QVector<float> m_re;       // split-complex real,  FFT_N/2
-    QVector<float> m_im;       // split-complex imag,  FFT_N/2
-
-    bool m_busy{false};
+    FFTSetup        m_fftSetup;
+    QVector<float>  m_window;
+    QVector<float>  m_re, m_im;
+    bool            m_busy{false};
 };
