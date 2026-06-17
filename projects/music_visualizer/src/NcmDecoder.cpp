@@ -67,16 +67,21 @@ QString NcmDecoder::decode(const QString& ncmPath) {
         std::swap(box[i], box[j]);
     }
 
-    // ── Generate 256-byte keystream (NCM custom PRGA, matches ncmdump) ────
-    // For each index i, j = (i+1), swap box[j] and box[(j+box[j]) & 0xFF],
-    // then take box[(old_box_j + new_box_j) & 0xFF] as keystream byte.
+    // ── Generate 256-byte keystream (exact ncmdump algorithm) ───────────
+    // Reference: anonymous5l/ncmdump, buildKeyBox()
+    //   j = (i+1)
+    //   c = (box[j] + lastByte) & 0xFF    ← lastByte ROLLS between iterations
+    //   swap(box[j], box[c])
+    //   ks[i] = box[(box[j] + box[c]) & 0xFF]   ← both post-swap values
+    //   lastByte = c
     std::array<uint8_t, 256> ks;
+    int lastByte = 0;
     for (int i = 0; i < 256; i++) {
-        uint8_t j  = static_cast<uint8_t>(i + 1);
-        uint8_t a  = box[j];                        // box[j] before swap
-        uint8_t d  = static_cast<uint8_t>(j + a);  // target index
-        std::swap(box[j], box[d]);
-        ks[i] = box[static_cast<uint8_t>(a + box[j])];  // box[j] after swap
+        int j = (i + 1) & 0xFF;
+        int c = (box[j] + lastByte) & 0xFF;    // key: box[j] read BEFORE swap
+        std::swap(box[j], box[c]);
+        ks[i] = box[(box[j] + box[c]) & 0xFF]; // both values AFTER swap
+        lastByte = c;
     }
 
     // ── Skip meta block ───────────────────────────────────────────────────

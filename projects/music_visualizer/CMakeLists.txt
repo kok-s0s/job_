@@ -20,6 +20,8 @@ qt_add_executable(MusicVisualizer
     src/LyricsParser.h
     src/NcmDecoder.cpp
     src/NcmDecoder.h
+    src/MusicLibrary.cpp
+    src/MusicLibrary.h
 )
 
 qt_add_qml_module(MusicVisualizer

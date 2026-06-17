@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include "AudioAnalyzer.h"
 #include "LyricsParser.h"
+#include "MusicLibrary.h"
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
@@ -9,6 +10,7 @@ int main(int argc, char* argv[]) {
 
     qmlRegisterType<AudioAnalyzer>("MusicVisualizer", 1, 0, "AudioAnalyzer");
     qmlRegisterType<LyricsParser> ("MusicVisualizer", 1, 0, "LyricsParser");
+    qmlRegisterType<MusicLibrary> ("MusicVisualizer", 1, 0, "MusicLibrary");
 
     QQmlApplicationEngine engine;
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
