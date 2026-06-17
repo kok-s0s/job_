@@ -1,20 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <!-- 背景 -->
-  <rect width="100" height="100" rx="20" fill="#1a1a2e"/>
-  <!-- 天线 -->
-  <line x1="50" y1="18" x2="50" y2="28" stroke="#4ade80" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="50" cy="14" r="4" fill="#4ade80"/>
-  <!-- 头部 -->
-  <rect x="22" y="28" width="56" height="44" rx="8" fill="#4ade80"/>
-  <!-- 眼睛 -->
-  <circle cx="37" cy="46" r="7" fill="#1a1a2e"/>
-  <circle cx="63" cy="46" r="7" fill="#1a1a2e"/>
-  <circle cx="37" cy="46" r="3" fill="#4ade80"/>
-  <circle cx="63" cy="46" r="3" fill="#4ade80"/>
-  <!-- 嘴巴 -->
-  <rect x="33" y="60" width="8" height="5" rx="2" fill="#1a1a2e"/>
-  <rect x="46" y="60" width="8" height="5" rx="2" fill="#1a1a2e"/>
-  <rect x="59" y="60" width="8" height="5" rx="2" fill="#1a1a2e"/>
-  <!-- 身体 -->
-  <rect x="32" y="75" width="36" height="16" rx="6" fill="#4ade80" opacity="0.6"/>
+  <rect width="100" height="100" rx="18" fill="#1a1a2e"/>
+
+  <!-- 底座平台 -->
+  <rect x="30" y="84" width="40" height="8" rx="4" fill="#4ade80"/>
+  <!-- 底座立柱 -->
+  <rect x="42" y="72" width="16" height="14" rx="3" fill="#4ade80" opacity="0.85"/>
+
+  <!-- 手臂段一：底座关节 → 肘关节 -->
+  <line x1="50" y1="71" x2="24" y2="44" stroke="#4ade80" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- 手臂段二：肘关节 → 腕关节 -->
+  <line x1="24" y1="44" x2="68" y2="18" stroke="#4ade80" stroke-width="6.5" stroke-linecap="round"/>
+
+  <!-- 关节圆（叠在线段上方） -->
+  <circle cx="50" cy="71" r="6.5" fill="#1a1a2e" stroke="#4ade80" stroke-width="3"/>
+  <circle cx="24" cy="44" r="6" fill="#1a1a2e" stroke="#4ade80" stroke-width="3"/>
+  <circle cx="68" cy="18" r="5" fill="#1a1a2e" stroke="#4ade80" stroke-width="2.5"/>
+
+  <!-- 夹爪 -->
+  <line x1="68" y1="13" x2="60" y2="5" stroke="#4ade80" stroke-width="4" stroke-linecap="round"/>
+  <line x1="68" y1="13" x2="76" y2="5" stroke="#4ade80" stroke-width="4" stroke-linecap="round"/>
 </svg>
