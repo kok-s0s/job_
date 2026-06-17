@@ -7,20 +7,39 @@
 | 机器 | 用途 |
 |------|------|
 | Mac（8GB）| C++ 深度、Python、Qt QML、面试专项 |
-| Windows | ROS2、仿真、传感器项目（WSL2 + Ubuntu 22.04）|
+| Windows | ROS2、机器人学、仿真、传感器项目（WSL2 + Ubuntu 22.04）|
 
 ---
 
 ## 优先级总览
 
 ```
-P0  ROS2 实战        [Windows]  ← 简历最大空白
-P0  Python          [Mac]      ← 几乎所有目标 JD 都要求
-P1  Qt Quick / QML  [Mac]      ← 现有 Widgets 不够，补 Quick 栈
-P1  Linux IPC 深度  [Windows]  ← ZMQ / DDS / 共享内存
-P2  传感器 + OpenCV [Windows]  ← 视觉项目经历是加分项
-P2  仿真平台        [Windows]  ← Gazebo / Isaac Sim
+P0  ROS2 实战 + 机器人学基础   [Windows]  ← 简历最大空白，所有目标公司必考
+P0  Python                    [Mac]      ← 几乎所有目标 JD 都要求
+P1  运动控制基础概念            [任意]     ← 非夕/傅利叶/智元面试必考，成本低收益高
+P1  Qt Quick / QML            [Mac]      ← 现有 Widgets 不够，补 Quick 栈
+P1  仿真平台（Gazebo）          [Windows]  ← 项目级展示，比"学过 ROS2"说服力强十倍
+P2  Linux IPC 深度            [Windows]  ← ZMQ / DDS / 共享内存
+P2  传感器 + OpenCV            [Windows]  ← 视觉项目经历是加分项
 ```
+
+---
+
+## 目标公司技能对照
+
+| 技能 | 智元 | 傅利叶 | 非夕 | 优必选 | 乐聚 | 小鹏 |
+|------|------|--------|------|--------|------|------|
+| C++ 高级特性 | ★★★ | ★★★ | ★★★ | ★★★ | ★★ | ★★ |
+| ROS2 实战 | ★★★ | ★★★ | ★★ | ★★★ | ★★★ | ★★★ |
+| 机器人学（URDF/TF2/MoveIt2） | ★★★ | ★★ | ★★ | ★★★ | ★★ | ★★ |
+| 运动控制（PID/轨迹规划） | ★★★ | ★★★ | ★★★ | ★★ | ★★ | ★ |
+| 力控 / 阻抗控制概念 | ★★ | ★★★ | ★★★ | ★ | ★ | ★ |
+| 仿真（Gazebo/Isaac Sim） | ★★★ | ★★ | ★★ | ★★ | ★★ | ★★ |
+| Qt / 上位机 | ★ | ★★★ | ★ | ★★ | ★★ | ★★ |
+| Python | ★★ | ★★ | ★★ | ★★ | ★★ | ★★ |
+| Linux IPC / DDS | ★★ | ★★ | ★★ | ★★★ | ★ | ★★ |
+
+> 你已有：机械臂操控经验、C++ 基础、Qt Widgets、Linux 多线程。这些对傅利叶、优必选的上位机岗直接有效。
 
 ---
 
@@ -30,6 +49,14 @@ P2  仿真平台        [Windows]  ← Gazebo / Isaac Sim
 - 目标：能写算法集成脚本、数据处理代码、自动化工具
 - 重点：numpy / dataclasses / asyncio / 类型注解
 - 练法：把工作中写过的任意一个 C++ 工具用 Python 重写一遍
+
+### 运动控制基础梳理（第 3 周，穿插 1-2 天）
+- 目标：能口头讲清楚，整理成文档即可，不需要从零实现
+- 重点：
+  - PID 各项物理含义和调参思路（P/I/D 各自解决什么问题）
+  - 梯形速度曲线 / S 曲线轨迹插值（解决什么问题、和匀速有何区别）
+  - 阻抗控制 / 力控基本思想（非夕和傅利叶的核心卖点）
+- 输出：一份简短的自用笔记，面试能流畅讲出来即达标
 
 ### Qt Quick / QML（第 4-8 周）
 - 目标：能用 QML 写带实时数据展示的界面，C++ 后端暴露 `Q_PROPERTY`
@@ -61,9 +88,34 @@ P2  仿真平台        [Windows]  ← Gazebo / Isaac Sim
 3. 跑通 `talker` / `listener` 官方示例
 
 ### ROS2 实战（第 2-5 周）
-- 路径：[ROS2 Humble 官方教程](https://docs.ros.org/en/humble/Tutorials.html) 全部完成
+- 路径：ROS2 Humble 官方教程全部完成
 - 重点：Node / Topic / Service / Action / TF2 / launch 文件 / colcon 构建
 - 里程碑：写一个「发布传感器数据 → 处理节点订阅 → 可视化（rviz2）」三节点 Demo
+
+### 机器人学基础（第 4-6 周，与 ROS2 进阶并行）
+
+这是路线图原版的空白，是所有目标公司面试的应用层门槛。
+
+**URDF 建模**
+- 能从零写一个简单机械臂的 URDF
+- 在 rviz2 中可视化，能拖动关节
+
+**TF2 坐标变换**
+- 理解 TF2 树的结构
+- 能查询任意两坐标系间的变换（`tf2_ros::Buffer::lookupTransform`）
+- 里程碑：在三节点 Demo 里加入 TF2 广播，rviz2 显示坐标系
+
+**MoveIt2 运动规划**
+- 配置 MoveIt2 接管一个 URDF 模型
+- 用 `move_group` 接口完成一次规划 + 执行（仿真环境）
+- 里程碑：机械臂在 Gazebo 中规划一条无碰撞路径并执行
+
+### 仿真平台（第 5-8 周，与机器人学并行）
+- 工具：Gazebo Classic（Humble 默认）
+- 步骤：
+  1. 跑通一个现成 URDF 模型（如 `turtlebot3`）
+  2. 把自己写的 URDF 加载进 Gazebo，接 ROS2 控制器
+  3. 综合项目中作为主仿真环境
 
 ### Linux IPC + ZMQ（第 6-8 周）
 - ZMQ：Pub/Sub + Req/Rep，封装一个简单的多进程通信 Demo
@@ -73,19 +125,26 @@ P2  仿真平台        [Windows]  ← Gazebo / Isaac Sim
 
 ## 综合项目（第 9-12 周，Windows 主导 + Mac QML 界面）
 
-两台机器合流，做一个完整的简历级项目。二选一：
+两台机器合流，做一个完整的简历级项目。
 
-### 方向 A：移动机器人导航仿真（推荐，不需要硬件）
+### 方向 A：机械臂抓取仿真（推荐，贴近目标岗位）
+
+```
+Gazebo 仿真 + MoveIt2 运动规划 + ROS2 + Qt QML 监控界面
+```
+
+- Windows：Gazebo 仿真 + MoveIt2 + ROS2 节点（发布关节状态、目标位姿）
+- Mac：Qt QML 界面，通过 rosbridge 或自定义 WebSocket 接收并展示机械臂状态
+
+**为什么选这个：** 直接复用你的机械臂背景，同时补齐 MoveIt2 + 仿真 + QML 三个简历空白，对傅利叶、优必选、乐聚说服力最强。
+
+### 方向 B：移动机器人导航仿真（备选）
+
 ```
 Gazebo 仿真 + Nav2 导航栈 + ROS2 + Qt QML 监控界面
 ```
-- Windows：Gazebo 仿真 + Nav2 + ROS2 节点
-- Mac：Qt QML 界面，通过 rosbridge 或自定义 WebSocket 接收数据
 
-### 方向 B：目标检测与位姿估计（需要 RealSense 相机）
-```
-RealSense 深度相机 + OpenCV/YOLO + ROS2 + Qt QML 可视化
-```
+适合最终想往移动平台方向走的情况。
 
 ---
 
@@ -93,7 +152,7 @@ RealSense 深度相机 + OpenCV/YOLO + ROS2 + Qt QML 可视化
 
 | 阶段 | 时间 | Mac | Windows |
 |------|------|-----|---------|
-| 基础补强 | 第 1-4 周 | Python + C++面试专项 | WSL2 环境 + ROS2 入门 |
-| 技术扩展 | 第 5-8 周 | Qt QML Demo | ROS2 进阶 + ZMQ |
-| 综合项目 | 第 9-12 周 | QML 界面 | 仿真 + ROS2 节点 |
+| 基础补强 | 第 1-4 周 | Python + C++ 面试专项 | WSL2 环境 + ROS2 入门 |
+| 技术扩展 | 第 5-8 周 | Qt QML Demo + 运动控制梳理 | ROS2 进阶 + 机器人学 + Gazebo + ZMQ |
+| 综合项目 | 第 9-12 周 | QML 界面 | 仿真 + MoveIt2 + ROS2 节点 |
 | 投递 | 第 13 周起 | 简历更新 + 开始投递 | — |
