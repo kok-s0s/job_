@@ -18,14 +18,9 @@
 
 ## 阶段二：简历级项目（第 9-12 周）
 
-> 二选一，根据第 8 周末的兴趣和进度决定。
+### ✅ 方向 A：机械臂抓取仿真（已选定）
 
-### 方向 A：基于 RealSense 的目标检测与位姿估计
-- **技术栈**：C++ + Python + ROS2 + OpenCV + Qt QML
-- **内容**：深度相机采集 → YOLO/OpenCV 检测 → 位姿估计 → QML 实时可视化
-- **亮点**：视觉 + ROS2 + Qt 全打通，覆盖大多数目标 JD 的技术要求
-
-### 方向 B：移动机器人导航仿真
-- **技术栈**：C++ + ROS2 + Gazebo + Nav2 + Qt QML
-- **内容**：在 Gazebo 仿真环境中跑 Nav2 导航栈，Qt QML 做监控界面
-- **亮点**：不需要硬件，门槛低；Gazebo + Nav2 是具身智能岗高频考点
+- **技术栈**：C++ + ROS2 Humble + Gazebo Classic + MoveIt2 + Qt QML + rosbridge
+- **内容**：Franka Panda 在 Gazebo 中执行完整抓取序列，Qt QML 上位机实时监控
+- **亮点**：直接复用机械臂背景，同时补齐 MoveIt2 + 仿真 + QML 三个简历空白
+- **详细任务拆分**：[→ 查看第 9-12 周详细计划](arm_grasp_sim.md)

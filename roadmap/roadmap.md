@@ -125,26 +125,18 @@ P2  传感器 + OpenCV            [Windows]  ← 视觉项目经历是加分项
 
 ## 综合项目（第 9-12 周，Windows 主导 + Mac QML 界面）
 
-两台机器合流，做一个完整的简历级项目。
-
-### 方向 A：机械臂抓取仿真（推荐，贴近目标岗位）
+✅ **已选定方向 A：机械臂抓取仿真**，[查看详细周任务拆分 →](/projects/arm_grasp_sim)
 
 ```
-Gazebo 仿真 + MoveIt2 运动规划 + ROS2 + Qt QML 监控界面
+Franka Panda + Gazebo Classic + MoveIt2 + ROS2 + Qt QML + rosbridge
 ```
 
-- Windows：Gazebo 仿真 + MoveIt2 + ROS2 节点（发布关节状态、目标位姿）
-- Mac：Qt QML 界面，通过 rosbridge 或自定义 WebSocket 接收并展示机械臂状态
-
-**为什么选这个：** 直接复用你的机械臂背景，同时补齐 MoveIt2 + 仿真 + QML 三个简历空白，对傅利叶、优必选、乐聚说服力最强。
-
-### 方向 B：移动机器人导航仿真（备选）
-
-```
-Gazebo 仿真 + Nav2 导航栈 + ROS2 + Qt QML 监控界面
-```
-
-适合最终想往移动平台方向走的情况。
+| 周次 | 重点 | 里程碑 |
+|------|------|--------|
+| 第 9 周 | 机械臂选型 + Gazebo 环境搭建 | Gazebo 中 Panda + 桌面 + 目标物体可见，关节指令响应正常 |
+| 第 10 周 | MoveIt2 规划集成 | 关节空间 + 笛卡尔规划均可执行，夹爪开合模拟完成 |
+| 第 11 周 | 三节点架构 + 完整抓取流程 | `ros2 action send_goal` 触发完整六阶段抓取序列 |
+| 第 12 周 | Qt QML 界面 + 跨机联调 | Mac 界面点击「开始抓取」，Gazebo 响应，状态实时更新 |
 
 ---
 

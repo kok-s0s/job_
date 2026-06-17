@@ -127,6 +127,12 @@ export default withMermaid(
             items: [{ text: '阶段规划总览', link: '/projects/' }],
           },
           {
+            text: '简历级项目',
+            items: [
+              { text: '方向 A：机械臂抓取仿真（第 9-12 周）', link: '/projects/arm_grasp_sim' },
+            ],
+          },
+          {
             text: '个人兴趣项目',
             items: [
               { text: '方向一：音乐频谱可视化播放器', link: '/projects/music_visualizer' },
