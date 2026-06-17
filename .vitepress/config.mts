@@ -26,6 +26,7 @@ export default withMermaid(
         { text: '学习路线', link: '/roadmap/roadmap' },
 { text: '项目计划', link: '/projects/' },
         { text: 'JD 汇总', link: '/jd/' },
+        { text: '目标公司', link: '/companies/' },
         { text: '简历生成器', link: '/resume.html', target: '_blank' },
       ],
 
@@ -109,6 +110,14 @@ export default withMermaid(
               { text: 'RAG 在前端的应用', link: '/practice/rag_frontend' },
               { text: 'AI 交互组件', link: '/practice/ai_components' },
               { text: 'Function Calling', link: '/practice/function_calling' },
+            ],
+          },
+        ],
+        '/companies/': [
+          {
+            text: '目标公司',
+            items: [
+              { text: '总览（沪 / 深 / 穗）', link: '/companies/' },
             ],
           },
         ],
