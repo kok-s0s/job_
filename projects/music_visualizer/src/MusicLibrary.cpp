@@ -1,6 +1,7 @@
 #include "MusicLibrary.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QStandardPaths>
 #include <QUrl>
 #include <algorithm>
 
@@ -51,6 +52,16 @@ void MusicLibrary::scanFolder(const QUrl& folderUrl) {
 
     endResetModel();
     emit countChanged();
+}
+
+void MusicLibrary::scanDefaultFolder() {
+    QString dir = QDir::homePath() + "/Music/网易云音乐";
+    if (!QDir(dir).exists()) {
+        const QString musicDir = QStandardPaths::writableLocation(QStandardPaths::MusicLocation);
+        if (!musicDir.isEmpty())
+            dir = musicDir;
+    }
+    scanFolder(QUrl::fromLocalFile(dir));
 }
 
 QString MusicLibrary::findCover(const QString& dir, const QString& baseName) {

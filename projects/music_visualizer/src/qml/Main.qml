@@ -18,10 +18,13 @@ ApplicationWindow {
     AudioAnalyzer {
         id: analyzer
         onSpectrumChanged: canvas.requestPaint()
-        onAnalysisComplete: {
+        onAnalysisComplete: function(sourceUrl) {
             statusText.text = ""
-            player.source   = root.currentAudioUrl
+            player.source   = sourceUrl
             player.play()
+        }
+        onAnalysisFailed: function(message) {
+            statusText.text = message
         }
         onBusyChanged: { if (busy) statusText.text = "Analyzing…" }
     }
@@ -32,6 +35,8 @@ ApplicationWindow {
     property url    currentAudioUrl: ""
     property url    currentCoverUrl: ""
     property string currentName:     "Music Visualizer"
+
+    Component.onCompleted: library.scanDefaultFolder()
 
     function loadTrack(audioUrl, lrcPath, coverUrl, name) {
         root.currentAudioUrl = audioUrl
@@ -48,7 +53,6 @@ ApplicationWindow {
         onPositionChanged: {
             if (!seeker.pressed)
                 seeker.value = duration > 0 ? position / duration : 0
-            analyzer.seekTo(position)
             lyrics.seekTo(position)
         }
         onPlaybackStateChanged: {
@@ -57,10 +61,11 @@ ApplicationWindow {
     }
 
     Timer {
-        interval: 16
+        interval: 33
         running: player.playbackState === MediaPlayer.PlayingState
         repeat: true
         onTriggered: {
+            root.lastVisualUpdateMs = player.position
             analyzer.seekTo(player.position)
             if (visMode === "particles") canvas.requestPaint()
         }
@@ -86,6 +91,7 @@ ApplicationWindow {
     // ── Visualization ─────────────────────────────────────────────────────
     property string visMode:   "bars"
     property var    particles: []
+    property int    lastVisualUpdateMs: -1
 
     function spawnParticles(bars) {
         for (var i = 0; i < bars.length; i += 2) {
@@ -351,10 +357,10 @@ ApplicationWindow {
 
                     function drawWave(ctx) {
                         var wave=analyzer.waveform; if (!wave||wave.length===0) return; var n=wave.length
-                        ctx.lineWidth=2; ctx.strokeStyle="rgba(124,58,237,0.9)"; ctx.shadowBlur=10; ctx.shadowColor="#7c3aed"
+                        ctx.lineWidth=2; ctx.strokeStyle="rgba(124,58,237,0.9)"
                         ctx.beginPath()
                         for (var i=0;i<n;i++) { var x=(i/(n-1))*width, y=(1-wave[i])/2*height; i===0?ctx.moveTo(x,y):ctx.lineTo(x,y) }
-                        ctx.stroke(); ctx.shadowBlur=0
+                        ctx.stroke()
                         ctx.strokeStyle="rgba(6,182,212,0.5)"; ctx.beginPath()
                         for (var j=0;j<n;j++) { var xm=(j/(n-1))*width, ym=(1+wave[j])/2*height; j===0?ctx.moveTo(xm,ym):ctx.lineTo(xm,ym) }
                         ctx.stroke()
@@ -378,7 +384,15 @@ ApplicationWindow {
                             width: 28; height: 28; radius: 6
                             color: visMode===modelData.key?"#7c3aed":"#1e293b"
                             Text { anchors.centerIn: parent; text: modelData.icon; color: "white"; font.pixelSize: 13 }
-                            MouseArea { anchors.fill: parent; onClicked: { visMode=modelData.key; canvas.requestPaint() } }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    visMode = modelData.key
+                                    if (root.lastVisualUpdateMs >= 0)
+                                        analyzer.seekTo(root.lastVisualUpdateMs)
+                                    canvas.requestPaint()
+                                }
+                            }
                         }
                     }
                 }

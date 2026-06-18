@@ -48,9 +48,16 @@ void AudioAnalyzer::analyzeFile(const QUrl& url) {
     QUrl src = url;
     if (url.toLocalFile().toLower().endsWith(".ncm")) {
         QString decoded = NcmDecoder::decode(url.toLocalFile());
-        if (!decoded.isEmpty()) src = QUrl::fromLocalFile(decoded);
+        if (decoded.isEmpty()) {
+            m_busy = false;
+            emit busyChanged();
+            emit analysisFailed("NCM decode failed");
+            return;
+        }
+        src = QUrl::fromLocalFile(decoded);
     }
 
+    m_sourceUrl = src;
     m_decoder->setSource(src);
     m_decoder->start();
 }
@@ -114,7 +121,7 @@ void AudioAnalyzer::buildFrame(qint64 frameMs) {
 void AudioAnalyzer::onDecoderFinished() {
     m_busy = false;
     emit busyChanged();
-    emit analysisComplete();
+    emit analysisComplete(m_sourceUrl);
 }
 
 void AudioAnalyzer::seekTo(qint64 positionMs) {

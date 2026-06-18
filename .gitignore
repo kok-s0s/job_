@@ -1,3 +1,5 @@
 node_modules/
 .vitepress/dist
 .vitepress/cache
+projects/music_visualizer/build*/
+projects/music_visualizer/dist/

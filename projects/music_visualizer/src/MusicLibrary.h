@@ -25,6 +25,7 @@ public:
     // Scan a folder for audio files (.ncm .mp3 .flac .wav .m4a .ogg)
     // and their paired .lrc and cover images.
     Q_INVOKABLE void scanFolder(const QUrl& folderUrl);
+    Q_INVOKABLE void scanDefaultFolder();
     Q_INVOKABLE void clear();
 
     int      rowCount(const QModelIndex& = {}) const override;

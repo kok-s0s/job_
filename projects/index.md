@@ -24,3 +24,14 @@
 - **内容**：Franka Panda 在 Gazebo 中执行完整抓取序列，Qt QML 上位机实时监控
 - **亮点**：直接复用机械臂背景，同时补齐 MoveIt2 + 仿真 + QML 三个简历空白
 - **详细任务拆分**：[→ 查看第 9-12 周详细计划](arm_grasp_sim.md)
+
+---
+
+## 阶段三：公司 SDK 实战项目（ROKAE SDK × ROS2）
+
+### 方向 B：ROKAE Copilot（公司 SDK 项目）
+
+- **技术栈**：ROKAE SDK / ROS2 + Python/C++ + MoveIt2 + Dashboard
+- **内容**：基于公司 SDK 封装机械臂运动、IO、拖动示教、状态读取，做自然语言控制与轨迹回放系统。
+- **目标**：形成一个能在公司 SDK 生态内持续迭代的 ROS2 技术项目。
+- **详细计划**：[→ 查看 ROKAE SDK × ROS2 项目规划](rokae_ros2_sdk_apps.md)

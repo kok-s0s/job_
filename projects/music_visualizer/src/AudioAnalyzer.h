@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QList>
 #include <QVector>
+#include <QUrl>
 #include <QAudioDecoder>
 #include <Accelerate/Accelerate.h>
 
@@ -16,7 +17,7 @@ public:
     static constexpr int BINS     = 64;
     static constexpr int FFT_N    = 2048;
     static constexpr int HOP      = 512;
-    static constexpr int WAVE_PTS = 256;  // waveform points exposed to QML
+    static constexpr int WAVE_PTS = 128;  // waveform points exposed to QML
 
     explicit AudioAnalyzer(QObject* parent = nullptr);
     ~AudioAnalyzer() override;
@@ -31,7 +32,8 @@ public:
 signals:
     void spectrumChanged();
     void busyChanged();
-    void analysisComplete();
+    void analysisComplete(const QUrl& sourceUrl);
+    void analysisFailed(const QString& message);
 
 private slots:
     void onBufferReady();
@@ -48,6 +50,7 @@ private:
     };
 
     QAudioDecoder*  m_decoder;
+    QUrl            m_sourceUrl;
     QList<qreal>    m_spectrum;
     QList<qreal>    m_waveform;
     QVector<float>  m_pcm;

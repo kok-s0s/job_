@@ -130,6 +130,7 @@ export default withMermaid(
             text: '简历级项目',
             items: [
               { text: '方向 A：机械臂抓取仿真（第 9-12 周）', link: '/projects/arm_grasp_sim' },
+              { text: '方向 B：ROKAE SDK × ROS2 项目', link: '/projects/rokae_ros2_sdk_apps' },
             ],
           },
           {

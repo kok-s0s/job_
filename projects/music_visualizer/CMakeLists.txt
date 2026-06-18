@@ -27,13 +27,23 @@ qt_add_executable(MusicVisualizer
 qt_add_qml_module(MusicVisualizer
     URI MusicVisualizer
     VERSION 1.0
+    NO_IMPORT_SCAN
+    NO_GENERATE_QMLTYPES
+    NO_CACHEGEN
     QML_FILES
         src/qml/Main.qml
 )
 
 target_include_directories(MusicVisualizer PRIVATE src)
 
-set_target_properties(MusicVisualizer PROPERTIES OUTPUT_NAME "music-visualizer")
+set_target_properties(MusicVisualizer PROPERTIES
+    OUTPUT_NAME "music-visualizer"
+    MACOSX_BUNDLE TRUE
+    MACOSX_BUNDLE_BUNDLE_NAME "Music Visualizer"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "dev.local.musicvisualizer"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+)
 
 target_link_libraries(MusicVisualizer PRIVATE
     Qt6::Core
