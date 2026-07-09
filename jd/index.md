@@ -7,6 +7,7 @@
 | [JD-001](jd_001_cpp_embodied_intelligence.md) | C/C++（具身智能）| 京东 | ROS2、ZMQ/DDS、Python |
 | [JD-004](jd_004_qt_supervisor_humanoid_robot.md) | QT 软件主管（人形机器人）| 人形机器人 | ROS2深度、Gazebo/MuJoCo、Jetson |
 | [JD-008](jd_008_robot_software_embodied.md) | 软件开发（机器人）| 具身智能 | ROS2、SLAM基础、Python |
+| [JD-009](jd_009_robot_software_system_engineer.md) | 机器人软件系统开发工程师 | 智能机器人 | C++17、实时系统、DDS、AI 推理部署、CAN/EtherCAT |
 
 ## 备选岗位（保底）
 
@@ -25,4 +26,4 @@
 
 ## 高频技能（跨 JD 统计）
 
-C++11/14 · Linux · 多线程 · Qt · Python · Socket · ROS/ROS2 · 传感器集成
+C++11/14/17 · Linux · 多线程 · Qt · Python · Socket · ROS/ROS2 · DDS · 状态机 · AI 推理部署 · 传感器/执行器集成

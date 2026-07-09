@@ -80,6 +80,7 @@ export default withMermaid(
               { text: 'JD-006 后端 Java/Go', link: '/jd/jd_006_backend_java_go' },
               { text: 'JD-007 Linux 应用工程师', link: '/jd/jd_007_linux_application_engineer' },
               { text: 'JD-008 机器人软件工程师', link: '/jd/jd_008_robot_software_embodied' },
+              { text: 'JD-009 机器人软件系统开发', link: '/jd/jd_009_robot_software_system_engineer' },
             ],
           },
         ],
