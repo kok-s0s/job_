@@ -4,6 +4,8 @@
 
 适用岗位：[JD-009 机器人软件系统开发工程师](/jd/jd_009_robot_software_system_engineer)
 
+每日练习记录：[每日练习记录](/roadmap/daily)
+
 ## 执行规则
 
 每天 2 小时拆成三段：

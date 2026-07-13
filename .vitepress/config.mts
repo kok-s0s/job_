@@ -84,6 +84,7 @@ export default withMermaid(
             text: '学习计划',
             items: [
               { text: '工作日 2 小时计划', link: '/roadmap/weekday_2h_plan' },
+              { text: '每日练习记录', link: '/roadmap/daily' },
               { text: '总路线', link: '/roadmap/roadmap' },
             ],
           },
