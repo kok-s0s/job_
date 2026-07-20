@@ -135,6 +135,7 @@ export default withMermaid(
             text: '实战项目',
             items: [
               { text: '阶段规划总览', link: '/projects/' },
+              { text: 'ROS2 Runtime Demo', link: '/projects/ros2_runtime_demo' },
             ],
           },
           {
