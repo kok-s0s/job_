@@ -4,7 +4,8 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/string.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 #include "std_srvs/srv/trigger.hpp"
 
 using namespace std::chrono_literals;
@@ -13,24 +14,32 @@ class RuntimeNode : public rclcpp::Node {
 public:
     RuntimeNode()
         : Node("runtime_node") {
-        sensor_sub_ = create_subscription<std_msgs::msg::String>(
-            "robot/sensor_state",
+        imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
+            "/robot/imu",
             10,
-            [this](const std_msgs::msg::String::SharedPtr msg) {
-                latest_sensor_state_ = msg->data;
-                ++received_count_;
-
-                if (msg->data.find("fault=true") != std::string::npos) {
-                    runtime_state_ = "FAULT";
-                } else {
-                    runtime_state_ = "RUNNING";
-                }
-
+            [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
+                ++imu_count_;
+                latest_accel_z_ = msg->linear_acceleration.z;
+                runtime_state_ = "RUNNING";
                 RCLCPP_INFO(
                     get_logger(),
-                    "received sensor_state: '%s', runtime_state=%s",
-                    latest_sensor_state_.c_str(),
-                    runtime_state_.c_str());
+                    "received imu count=%zu frame=%s accel_z=%.2f",
+                    imu_count_,
+                    msg->header.frame_id.c_str(),
+                    latest_accel_z_);
+            });
+
+        joint_sub_ = create_subscription<sensor_msgs::msg::JointState>(
+            "/robot/joint_states",
+            10,
+            [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
+                ++joint_count_;
+                latest_joint_count_ = msg->name.size();
+                RCLCPP_INFO(
+                    get_logger(),
+                    "received joint_states count=%zu joints=%zu",
+                    joint_count_,
+                    latest_joint_count_);
             });
 
         reset_service_ = create_service<std_srvs::srv::Trigger>(
@@ -47,20 +56,25 @@ public:
         heartbeat_timer_ = create_wall_timer(1s, [this] {
             RCLCPP_INFO(
                 get_logger(),
-                "runtime status=%s received=%zu latest='%s'",
+                "runtime status=%s imu_received=%zu joint_received=%zu latest_accel_z=%.2f latest_joints=%zu",
                 runtime_state_.c_str(),
-                received_count_,
-                latest_sensor_state_.c_str());
+                imu_count_,
+                joint_count_,
+                latest_accel_z_,
+                latest_joint_count_);
         });
     }
 
 private:
-    rclcpp::Subscription<std_msgs::msg::String>::SharedPtr sensor_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     std::string runtime_state_ = "BOOTING";
-    std::string latest_sensor_state_ = "<none>";
-    std::size_t received_count_ = 0;
+    std::size_t imu_count_ = 0;
+    std::size_t joint_count_ = 0;
+    std::size_t latest_joint_count_ = 0;
+    double latest_accel_z_ = 0.0;
 };
 
 int main(int argc, char** argv) {

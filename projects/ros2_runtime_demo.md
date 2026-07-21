@@ -2,7 +2,7 @@
 
 对应练习：[2026-07-20：ROS2 Workspace 与 C++ Package](/roadmap/daily/2026-07-20)
 
-这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、Topic、Service、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
+这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
 源码目录：
 
@@ -27,8 +27,8 @@ robot_runtime_demo/
 
 场景：一个机器人运行时系统需要接收底层传感器状态，并根据状态维护自己的运行状态。
 
-- `sensor_sim_node`：模拟底层传感器/驱动层，500ms 发布一次 `robot/sensor_state`。
-- `runtime_node`：模拟机器人运行时/监控层，订阅 `robot/sensor_state`，发现 `fault=true` 时进入 `FAULT`，否则保持 `RUNNING`。
+- `sensor_sim_node`：模拟底层传感器/驱动层，10Hz 发布 `/robot/imu` 和 `/robot/joint_states`。
+- `runtime_node`：模拟机器人运行时/监控层，订阅 `/robot/imu` 和 `/robot/joint_states`，记录 IMU 与关节状态接收计数。
 - `runtime/reset_fault`：一个 `std_srvs/srv/Trigger` 服务，用来模拟“清故障/复位”命令。
 - `runtime_demo.launch.py`：一次启动两个节点，演示 ROS2 多进程节点协作。
 
@@ -67,21 +67,24 @@ cd projects/ros2_runtime_demo
 bash scripts/verify_ros2_runtime_demo.sh
 ```
 
-2026-07-21 已在 WSL2 Ubuntu 24.04 + ROS2 Jazzy 中通过验证。预期能看到三类输出：
+预期能看到四类输出：
 
 ```txt
-[sensor_sim_node]: published sensor_state: 'seq=... temperature=... joint_position=... fault=false'
-[runtime_node]: runtime status=RUNNING received=... latest='seq=...'
+[sensor_sim_node]: published sensors seq=... imu_ax=... imu_az=9.8 joint_1=...
+[runtime_node]: runtime status=RUNNING imu_received=... joint_received=... latest_accel_z=9.80 latest_joints=3
+average rate: 9....
 std_srvs.srv.Trigger_Response(success=True, message='runtime fault state cleared')
 ```
 
 脚本会依次完成：
 
-- 检查 `ros2`、`ROS_DISTRO=humble`、`colcon`。
+- 检查 `ros2`、`ROS_DISTRO=humble/jazzy`、`colcon`。
 - 执行 `colcon build --packages-select robot_runtime_demo`。
 - `source install/setup.bash` 后限时运行 `ros2 launch robot_runtime_demo runtime_demo.launch.py`。
+- 检查 `/robot/imu` 和 `/robot/joint_states` 各能 echo 一条 typed message。
+- 检查 `/robot/imu` 和 `/robot/joint_states` 能输出 topic 频率。
 - 调用 `/runtime/reset_fault` service。
-- 检查输出中是否出现传感器发布、运行时订阅日志和 service 成功响应。
+- 检查输出中是否出现 typed 传感器发布、运行时订阅日志、topic hz 和 service 成功响应。
 
 如果想手动分步验证，也可以执行：
 
@@ -101,7 +104,10 @@ cd projects/ros2_runtime_demo
 source install/setup.bash
 
 ros2 topic list
-ros2 topic echo /robot/sensor_state
+ros2 topic echo /robot/imu --once
+ros2 topic echo /robot/joint_states --once
+ros2 topic hz /robot/imu
+ros2 topic hz /robot/joint_states
 ros2 service list
 ros2 service call /runtime/reset_fault std_srvs/srv/Trigger {}
 ```
@@ -120,17 +126,17 @@ colcon=/usr/bin/colcon
 验证脚本最终输出：
 
 ```txt
-[ok] ROS2 runtime demo verified: topic publisher, topic subscriber, service call, and launch startup are working
+[ok] ROS2 runtime demo verified: typed sensor publishers, runtime subscribers, topic hz, service call, and launch startup are working
 ```
 
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
 
-- `package.xml` 声明 package 元信息和 `rclcpp`、`std_msgs`、`std_srvs` 依赖。
-- `CMakeLists.txt` 查找 `ament_cmake`、`rclcpp`、`std_msgs`、`std_srvs`，编译并安装两个节点和 launch 文件。
-- `sensor_sim_node.cpp` 展示 Topic publisher，模拟驱动/传感器持续输出数据。
-- `runtime_node.cpp` 展示 Topic subscriber 和 Service server，模拟机器人运行时根据数据更新状态，并响应外部复位请求。
+- `package.xml` 声明 package 元信息和 `rclcpp`、`sensor_msgs`、`std_srvs` 依赖。
+- `CMakeLists.txt` 查找 `ament_cmake`、`rclcpp`、`sensor_msgs`、`std_srvs`，编译并安装两个节点和 launch 文件。
+- `sensor_sim_node.cpp` 展示 typed Topic publisher，模拟 IMU 和关节状态持续输出数据。
+- `runtime_node.cpp` 展示 typed Topic subscriber 和 Service server，模拟机器人运行时根据传感器数据更新状态，并响应外部复位请求。
 - 构建后必须 `source install/setup.bash`，否则当前 shell 找不到新 package。
 - `scripts/verify_ros2_runtime_demo.sh` 是验收入口，用来补齐环境检查、构建、launch 启动、Topic 发布/订阅检查。
 

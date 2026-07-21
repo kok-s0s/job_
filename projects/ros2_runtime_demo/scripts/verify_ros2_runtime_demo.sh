@@ -64,6 +64,22 @@ trap cleanup EXIT
 
 sleep 4
 
+echo "[topic] /robot/imu --once"
+IMU_OUTPUT_FILE=$(mktemp)
+timeout 5s ros2 topic echo /robot/imu --once >"${IMU_OUTPUT_FILE}" 2>&1
+
+echo "[topic] /robot/joint_states --once"
+JOINT_OUTPUT_FILE=$(mktemp)
+timeout 5s ros2 topic echo /robot/joint_states --once >"${JOINT_OUTPUT_FILE}" 2>&1
+
+echo "[hz] /robot/imu"
+IMU_HZ_OUTPUT_FILE=$(mktemp)
+timeout 8s ros2 topic hz /robot/imu >"${IMU_HZ_OUTPUT_FILE}" 2>&1 || true
+
+echo "[hz] /robot/joint_states"
+JOINT_HZ_OUTPUT_FILE=$(mktemp)
+timeout 8s ros2 topic hz /robot/joint_states >"${JOINT_HZ_OUTPUT_FILE}" 2>&1 || true
+
 echo "[service] /runtime/reset_fault"
 SERVICE_OUTPUT_FILE=$(mktemp)
 timeout 5s ros2 service call /runtime/reset_fault std_srvs/srv/Trigger "{}" >"${SERVICE_OUTPUT_FILE}" 2>&1
@@ -73,11 +89,19 @@ cleanup
 trap - EXIT
 
 cat "${OUTPUT_FILE}"
+cat "${IMU_OUTPUT_FILE}"
+cat "${JOINT_OUTPUT_FILE}"
+cat "${IMU_HZ_OUTPUT_FILE}"
+cat "${JOINT_HZ_OUTPUT_FILE}"
 cat "${SERVICE_OUTPUT_FILE}"
 
-if ! grep -q "published sensor_state" "${OUTPUT_FILE}"; then
-  echo "sensor publisher output was not observed" >&2
+if ! grep -q "published sensors" "${OUTPUT_FILE}"; then
+  echo "typed sensor publisher output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
   rm -f "${SERVICE_OUTPUT_FILE}"
   exit 1
 fi
@@ -85,6 +109,54 @@ fi
 if ! grep -q "runtime status=" "${OUTPUT_FILE}"; then
   echo "runtime subscriber output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "linear_acceleration" "${IMU_OUTPUT_FILE}"; then
+  echo "/robot/imu output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "joint_1" "${JOINT_OUTPUT_FILE}"; then
+  echo "/robot/joint_states output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "average rate" "${IMU_HZ_OUTPUT_FILE}"; then
+  echo "/robot/imu hz output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "average rate" "${JOINT_HZ_OUTPUT_FILE}"; then
+  echo "/robot/joint_states hz output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
   rm -f "${SERVICE_OUTPUT_FILE}"
   exit 1
 fi
@@ -92,10 +164,18 @@ fi
 if ! grep -q "success=True" "${SERVICE_OUTPUT_FILE}"; then
   echo "reset service output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
   rm -f "${SERVICE_OUTPUT_FILE}"
   exit 1
 fi
 
 rm -f "${OUTPUT_FILE}"
+rm -f "${IMU_OUTPUT_FILE}"
+rm -f "${JOINT_OUTPUT_FILE}"
+rm -f "${IMU_HZ_OUTPUT_FILE}"
+rm -f "${JOINT_HZ_OUTPUT_FILE}"
 rm -f "${SERVICE_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: topic publisher, topic subscriber, service call, and launch startup are working"
+echo "[ok] ROS2 runtime demo verified: typed sensor publishers, runtime subscribers, topic hz, service call, and launch startup are working"

@@ -1,9 +1,11 @@
 #include <chrono>
+#include <cmath>
+#include <cstddef>
 #include <memory>
-#include <string>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/string.hpp"
+#include "sensor_msgs/msg/imu.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 
 using namespace std::chrono_literals;
 
@@ -11,30 +13,56 @@ class SensorSimNode : public rclcpp::Node {
 public:
     SensorSimNode()
         : Node("sensor_sim_node") {
-        publisher_ = create_publisher<std_msgs::msg::String>("robot/sensor_state", 10);
-        timer_ = create_wall_timer(500ms, [this] {
-            publish_sensor_state();
+        imu_pub_ = create_publisher<sensor_msgs::msg::Imu>("/robot/imu", 10);
+        joint_pub_ = create_publisher<sensor_msgs::msg::JointState>("/robot/joint_states", 10);
+        timer_ = create_wall_timer(100ms, [this] {
+            publishSensors();
         });
     }
 
 private:
-    void publish_sensor_state() {
+    void publishSensors() {
         ++sequence_;
-        const double temperature = 36.0 + static_cast<double>(sequence_ % 8) * 0.4;
-        const bool fault = sequence_ % 12 == 0;
+        const auto stamp = now();
+        const double t = static_cast<double>(sequence_) * 0.1;
 
-        std_msgs::msg::String msg;
-        msg.data =
-            "seq=" + std::to_string(sequence_) +
-            " temperature=" + std::to_string(temperature) +
-            " joint_position=" + std::to_string(0.1 * static_cast<double>(sequence_ % 20)) +
-            " fault=" + (fault ? "true" : "false");
+        sensor_msgs::msg::Imu imu;
+        imu.header.stamp = stamp;
+        imu.header.frame_id = "imu_link";
+        imu.orientation.w = 1.0;
+        imu.angular_velocity.z = 0.05 * std::sin(t);
+        imu.linear_acceleration.x = 0.1 * std::sin(t);
+        imu.linear_acceleration.y = 0.1 * std::cos(t);
+        imu.linear_acceleration.z = 9.8;
 
-        publisher_->publish(msg);
-        RCLCPP_INFO(get_logger(), "published sensor_state: '%s'", msg.data.c_str());
+        sensor_msgs::msg::JointState joints;
+        joints.header.stamp = stamp;
+        joints.name = {"joint_1", "joint_2", "joint_3"};
+        joints.position = {
+            0.5 * std::sin(t),
+            0.25 * std::cos(t),
+            0.1 * std::sin(0.5 * t),
+        };
+        joints.velocity = {
+            0.5 * std::cos(t),
+            -0.25 * std::sin(t),
+            0.05 * std::cos(0.5 * t),
+        };
+
+        imu_pub_->publish(imu);
+        joint_pub_->publish(joints);
+
+        RCLCPP_INFO(
+            get_logger(),
+            "published sensors seq=%zu imu_ax=%.3f imu_az=%.1f joint_1=%.3f",
+            sequence_,
+            imu.linear_acceleration.x,
+            imu.linear_acceleration.z,
+            joints.position.front());
     }
 
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
+    rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
+    rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
     std::size_t sequence_ = 0;
 };
