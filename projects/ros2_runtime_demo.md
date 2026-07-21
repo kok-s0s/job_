@@ -90,7 +90,8 @@ std_srvs.srv.Trigger_Response(success=True, message='runtime fault state cleared
 
 ```bash
 cd projects/ros2_runtime_demo
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash   # Ubuntu 24.04
+# source /opt/ros/humble/setup.bash  # Ubuntu 22.04
 colcon build --packages-select robot_runtime_demo
 source install/setup.bash
 ros2 launch robot_runtime_demo runtime_demo.launch.py
@@ -99,7 +100,8 @@ ros2 launch robot_runtime_demo runtime_demo.launch.py
 另开一个 Ubuntu 终端，可以观察 Topic 和调用 Service：
 
 ```bash
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash   # Ubuntu 24.04
+# source /opt/ros/humble/setup.bash  # Ubuntu 22.04
 cd projects/ros2_runtime_demo
 source install/setup.bash
 
@@ -128,6 +130,11 @@ colcon=/usr/bin/colcon
 ```txt
 [ok] ROS2 runtime demo verified: typed sensor publishers, runtime subscribers, topic hz, service call, and launch startup are working
 ```
+
+本次实测频率：
+
+- `/robot/imu`：`average rate: 9.998` / `10.000`。
+- `/robot/joint_states`：`average rate: 9.999` / `10.000`。
 
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
