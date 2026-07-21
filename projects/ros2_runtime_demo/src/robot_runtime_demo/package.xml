@@ -4,12 +4,17 @@
   <name>robot_runtime_demo</name>
   <version>0.1.0</version>
   <description>Minimal ROS2 C++ runtime node demo for daily job preparation.</description>
-  <maintainer email="dev@example.com">kok-s0s</maintainer>
+  <maintainer email="kok_s0s@163.com">kok_s0s</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>std_msgs</depend>
+  <depend>std_srvs</depend>
+
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

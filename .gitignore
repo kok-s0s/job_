@@ -1,5 +1,10 @@
 node_modules/
 .vitepress/dist
 .vitepress/cache
+.vitepress/.temp
+.vitepress*.log
 projects/music_visualizer/build*/
 projects/music_visualizer/dist/
+projects/ros2_runtime_demo/build/
+projects/ros2_runtime_demo/install/
+projects/ros2_runtime_demo/log/
