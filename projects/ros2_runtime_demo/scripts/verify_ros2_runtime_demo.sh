@@ -117,6 +117,17 @@ if ! grep -q "runtime status=" "${OUTPUT_FILE}"; then
   exit 1
 fi
 
+if ! grep -q "imu_latency_ms=.*joint_latency_ms=.*joint_valid=1" "${OUTPUT_FILE}"; then
+  echo "runtime subscriber health output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
 if ! grep -q "linear_acceleration" "${IMU_OUTPUT_FILE}"; then
   echo "/robot/imu output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
@@ -178,4 +189,4 @@ rm -f "${JOINT_OUTPUT_FILE}"
 rm -f "${IMU_HZ_OUTPUT_FILE}"
 rm -f "${JOINT_HZ_OUTPUT_FILE}"
 rm -f "${SERVICE_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: typed sensor publishers, runtime subscribers, topic hz, service call, and launch startup are working"
+echo "[ok] ROS2 runtime demo verified: typed sensor publishers, runtime health subscriber, topic hz, service call, and launch startup are working"
