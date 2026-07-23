@@ -84,6 +84,14 @@ echo "[service] /runtime/reset_fault"
 SERVICE_OUTPUT_FILE=$(mktemp)
 timeout 5s ros2 service call /runtime/reset_fault std_srvs/srv/Trigger "{}" >"${SERVICE_OUTPUT_FILE}" 2>&1
 
+echo "[service] /runtime/query_status"
+QUERY_SERVICE_LIST_FILE=$(mktemp)
+QUERY_SERVICE_TYPE_FILE=$(mktemp)
+QUERY_SERVICE_OUTPUT_FILE=$(mktemp)
+ros2 service list >"${QUERY_SERVICE_LIST_FILE}" 2>&1
+ros2 service type /runtime/query_status >"${QUERY_SERVICE_TYPE_FILE}" 2>&1
+timeout 5s ros2 service call /runtime/query_status std_srvs/srv/Trigger "{}" >"${QUERY_SERVICE_OUTPUT_FILE}" 2>&1
+
 sleep 2
 cleanup
 trap - EXIT
@@ -94,6 +102,9 @@ cat "${JOINT_OUTPUT_FILE}"
 cat "${IMU_HZ_OUTPUT_FILE}"
 cat "${JOINT_HZ_OUTPUT_FILE}"
 cat "${SERVICE_OUTPUT_FILE}"
+cat "${QUERY_SERVICE_LIST_FILE}"
+cat "${QUERY_SERVICE_TYPE_FILE}"
+cat "${QUERY_SERVICE_OUTPUT_FILE}"
 
 if ! grep -q "published sensors" "${OUTPUT_FILE}"; then
   echo "typed sensor publisher output was not observed" >&2
@@ -106,7 +117,7 @@ if ! grep -q "published sensors" "${OUTPUT_FILE}"; then
   exit 1
 fi
 
-if ! grep -q "runtime status=" "${OUTPUT_FILE}"; then
+if ! grep -q "runtime status state=" "${OUTPUT_FILE}"; then
   echo "runtime subscriber output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
@@ -183,10 +194,57 @@ if ! grep -q "success=True" "${SERVICE_OUTPUT_FILE}"; then
   exit 1
 fi
 
+if ! grep -q "/runtime/query_status" "${QUERY_SERVICE_LIST_FILE}"; then
+  echo "query_status service was not listed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  rm -f "${QUERY_SERVICE_LIST_FILE}"
+  rm -f "${QUERY_SERVICE_TYPE_FILE}"
+  rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "std_srvs/srv/Trigger" "${QUERY_SERVICE_TYPE_FILE}"; then
+  echo "query_status service type was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  rm -f "${QUERY_SERVICE_LIST_FILE}"
+  rm -f "${QUERY_SERVICE_TYPE_FILE}"
+  rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "success=True" "${QUERY_SERVICE_OUTPUT_FILE}" ||
+  ! grep -q "state=RUNNING" "${QUERY_SERVICE_OUTPUT_FILE}" ||
+  ! grep -q "imu_count=.*joint_count=.*imu_latency_ms=.*joint_latency_ms=.*joint_valid=1" "${QUERY_SERVICE_OUTPUT_FILE}"; then
+  echo "query_status service response did not include the expected runtime summary" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  rm -f "${QUERY_SERVICE_LIST_FILE}"
+  rm -f "${QUERY_SERVICE_TYPE_FILE}"
+  rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
 rm -f "${OUTPUT_FILE}"
 rm -f "${IMU_OUTPUT_FILE}"
 rm -f "${JOINT_OUTPUT_FILE}"
 rm -f "${IMU_HZ_OUTPUT_FILE}"
 rm -f "${JOINT_HZ_OUTPUT_FILE}"
 rm -f "${SERVICE_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: typed sensor publishers, runtime health subscriber, topic hz, service call, and launch startup are working"
+rm -f "${QUERY_SERVICE_LIST_FILE}"
+rm -f "${QUERY_SERVICE_TYPE_FILE}"
+rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: typed sensor publishers, runtime health subscriber, query/reset services, topic hz, and launch startup are working"

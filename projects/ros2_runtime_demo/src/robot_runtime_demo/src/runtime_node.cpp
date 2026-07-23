@@ -1,6 +1,8 @@
 #include <chrono>
 #include <cstddef>
+#include <iomanip>
 #include <memory>
+#include <sstream>
 #include <string>
 
 #include "builtin_interfaces/msg/time.hpp"
@@ -72,19 +74,23 @@ public:
                 RCLCPP_WARN(get_logger(), "reset_fault service called");
             });
 
+        query_status_service_ = create_service<std_srvs::srv::Trigger>(
+            "runtime/query_status",
+            [this](
+                const std::shared_ptr<std_srvs::srv::Trigger::Request>,
+                std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+                updateRuntimeState();
+                response->success = runtime_state_ == "RUNNING";
+                response->message = buildStatusSummary();
+                RCLCPP_INFO(get_logger(), "query_status service called: %s", response->message.c_str());
+            });
+
         heartbeat_timer_ = create_wall_timer(1s, [this] {
             updateRuntimeState();
             RCLCPP_INFO(
                 get_logger(),
-                "runtime status=%s imu_received=%zu joint_received=%zu latest_accel_z=%.2f latest_joints=%zu imu_latency_ms=%.2f joint_latency_ms=%.2f joint_valid=%d",
-                runtime_state_.c_str(),
-                imu_count_,
-                joint_count_,
-                latest_accel_z_,
-                latest_joint_count_,
-                latest_imu_latency_ms_,
-                latest_joint_latency_ms_,
-                latest_joint_valid_);
+                "runtime status %s",
+                buildStatusSummary().c_str());
         });
     }
 
@@ -111,9 +117,24 @@ private:
             : "FAULT";
     }
 
+    std::string buildStatusSummary() const {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2)
+            << "state=" << runtime_state_
+            << " imu_count=" << imu_count_
+            << " joint_count=" << joint_count_
+            << " latest_accel_z=" << latest_accel_z_
+            << " latest_joint_count=" << latest_joint_count_
+            << " imu_latency_ms=" << latest_imu_latency_ms_
+            << " joint_latency_ms=" << latest_joint_latency_ms_
+            << " joint_valid=" << static_cast<int>(latest_joint_valid_);
+        return oss.str();
+    }
+
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
+    rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr query_status_service_;
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     std::string runtime_state_ = "BOOTING";
     std::size_t imu_count_ = 0;
