@@ -138,7 +138,7 @@ colcon=/usr/bin/colcon
 验证脚本最终输出：
 
 ```txt
-[ok] ROS2 runtime demo verified: typed sensor publishers, runtime health subscriber, topic hz, service call, and launch startup are working
+[ok] ROS2 runtime demo verified: typed sensor publishers, runtime health subscriber, query/reset services, topic hz, and launch startup are working
 ```
 
 本次实测频率：
@@ -156,7 +156,8 @@ colcon=/usr/bin/colcon
 - `runtime_node` 新增 `/runtime/query_status` service。
 - `runtime_node` 新增 `buildStatusSummary()`，heartbeat 和 query service 复用同一份状态摘要。
 - 验证脚本新增 `ros2 service list`、`ros2 service type /runtime/query_status` 和 `ros2 service call /runtime/query_status` 检查。
-- 当前 macOS 环境没有 ROS2 / colcon，仍需在 WSL2 Ubuntu ROS2 环境中执行 `bash scripts/verify_ros2_runtime_demo.sh` 完成真实 ROS2 验收。
+- 已在 WSL2 Ubuntu 24.04.4 LTS / ROS2 Jazzy 中完成真实 ROS2 验收。
+- `ros2 service call /runtime/query_status std_srvs/srv/Trigger "{}"` 返回 `success=True`，message 包含 `state=RUNNING`、接收计数、延迟和 `joint_valid=1`。
 
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
