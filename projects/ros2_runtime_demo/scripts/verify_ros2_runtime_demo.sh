@@ -92,6 +92,31 @@ ros2 service list >"${QUERY_SERVICE_LIST_FILE}" 2>&1
 ros2 service type /runtime/query_status >"${QUERY_SERVICE_TYPE_FILE}" 2>&1
 timeout 5s ros2 service call /runtime/query_status std_srvs/srv/Trigger "{}" >"${QUERY_SERVICE_OUTPUT_FILE}" 2>&1
 
+echo "[action] /runtime/execute_task"
+ACTION_LIST_FILE=$(mktemp)
+ACTION_INTERFACE_FILE=$(mktemp)
+ACTION_OUTPUT_FILE=$(mktemp)
+ACTION_QUERY_OUTPUT_FILE=$(mktemp)
+ACTION_REJECT_OUTPUT_FILE=$(mktemp)
+ACTION_CANCEL_OUTPUT_FILE=$(mktemp)
+ros2 action list -t >"${ACTION_LIST_FILE}" 2>&1
+ros2 interface show robot_runtime_demo/action/ExecuteTask >"${ACTION_INTERFACE_FILE}" 2>&1
+timeout 10s ros2 action send_goal --feedback \
+  /runtime/execute_task \
+  robot_runtime_demo/action/ExecuteTask \
+  "{target_steps: 10}" >"${ACTION_OUTPUT_FILE}" 2>&1 &
+ACTION_PID=$!
+sleep 1
+timeout 5s ros2 service call \
+  /runtime/query_status std_srvs/srv/Trigger "{}" >"${ACTION_QUERY_OUTPUT_FILE}" 2>&1
+wait "${ACTION_PID}"
+timeout 5s ros2 action send_goal \
+  /runtime/execute_task \
+  robot_runtime_demo/action/ExecuteTask \
+  "{target_steps: 0}" >"${ACTION_REJECT_OUTPUT_FILE}" 2>&1 || true
+timeout 10s ros2 run \
+  robot_runtime_demo action_cancel_test_client >"${ACTION_CANCEL_OUTPUT_FILE}" 2>&1
+
 sleep 2
 cleanup
 trap - EXIT
@@ -105,6 +130,12 @@ cat "${SERVICE_OUTPUT_FILE}"
 cat "${QUERY_SERVICE_LIST_FILE}"
 cat "${QUERY_SERVICE_TYPE_FILE}"
 cat "${QUERY_SERVICE_OUTPUT_FILE}"
+cat "${ACTION_LIST_FILE}"
+cat "${ACTION_INTERFACE_FILE}"
+cat "${ACTION_OUTPUT_FILE}"
+cat "${ACTION_QUERY_OUTPUT_FILE}"
+cat "${ACTION_REJECT_OUTPUT_FILE}"
+cat "${ACTION_CANCEL_OUTPUT_FILE}"
 
 if ! grep -q "published sensors" "${OUTPUT_FILE}"; then
   echo "typed sensor publisher output was not observed" >&2
@@ -238,6 +269,46 @@ if ! grep -q "success=True" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   exit 1
 fi
 
+if ! grep -q "/runtime/execute_task.*robot_runtime_demo/action/ExecuteTask" "${ACTION_LIST_FILE}"; then
+  echo "execute_task action was not listed with the expected type" >&2
+  exit 1
+fi
+
+if ! grep -q "target_steps" "${ACTION_INTERFACE_FILE}" ||
+  ! grep -q "current_step" "${ACTION_INTERFACE_FILE}" ||
+  ! grep -q "progress" "${ACTION_INTERFACE_FILE}"; then
+  echo "ExecuteTask action interface did not contain the expected fields" >&2
+  exit 1
+fi
+
+if ! grep -q "Goal accepted" "${ACTION_OUTPUT_FILE}" ||
+  ! grep -q "current_step" "${ACTION_OUTPUT_FILE}" ||
+  ! grep -q "progress" "${ACTION_OUTPUT_FILE}" ||
+  ! grep -q "success=True" "${ACTION_OUTPUT_FILE}" ||
+  ! grep -q "task completed" "${ACTION_OUTPUT_FILE}"; then
+  echo "execute_task normal completion output was not observed" >&2
+  exit 1
+fi
+
+if ! grep -q "success=True" "${ACTION_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "task_state=RUNNING" "${ACTION_QUERY_OUTPUT_FILE}"; then
+  echo "query_status did not respond while execute_task was running" >&2
+  exit 1
+fi
+
+if ! grep -q "Goal rejected" "${ACTION_REJECT_OUTPUT_FILE}"; then
+  echo "execute_task invalid-goal rejection was not observed" >&2
+  exit 1
+fi
+
+if ! grep -q "cancel_result" "${ACTION_CANCEL_OUTPUT_FILE}" ||
+  ! grep -q "success=0" "${ACTION_CANCEL_OUTPUT_FILE}" ||
+  ! grep -q "task canceled at step" "${ACTION_CANCEL_OUTPUT_FILE}" ||
+  ! grep -Eq "feedback_count=[1-9][0-9]*" "${ACTION_CANCEL_OUTPUT_FILE}"; then
+  echo "execute_task cancellation output was not observed" >&2
+  exit 1
+fi
+
 rm -f "${OUTPUT_FILE}"
 rm -f "${IMU_OUTPUT_FILE}"
 rm -f "${JOINT_OUTPUT_FILE}"
@@ -247,4 +318,10 @@ rm -f "${SERVICE_OUTPUT_FILE}"
 rm -f "${QUERY_SERVICE_LIST_FILE}"
 rm -f "${QUERY_SERVICE_TYPE_FILE}"
 rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: typed sensor publishers, runtime health subscriber, query/reset services, topic hz, and launch startup are working"
+rm -f "${ACTION_LIST_FILE}"
+rm -f "${ACTION_INTERFACE_FILE}"
+rm -f "${ACTION_OUTPUT_FILE}"
+rm -f "${ACTION_QUERY_OUTPUT_FILE}"
+rm -f "${ACTION_REJECT_OUTPUT_FILE}"
+rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: typed topics, runtime health, query/reset services, and execute_task Action completion/rejection/cancellation are working"

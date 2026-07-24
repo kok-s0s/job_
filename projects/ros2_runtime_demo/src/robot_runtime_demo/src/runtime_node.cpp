@@ -1,12 +1,16 @@
+#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <iomanip>
 #include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 
 #include "builtin_interfaces/msg/time.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
+#include "robot_runtime_demo/action/execute_task.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_srvs/srv/trigger.hpp"
@@ -15,6 +19,9 @@ using namespace std::chrono_literals;
 
 class RuntimeNode : public rclcpp::Node {
 public:
+    using ExecuteTask = robot_runtime_demo::action::ExecuteTask;
+    using GoalHandleExecuteTask = rclcpp_action::ServerGoalHandle<ExecuteTask>;
+
     RuntimeNode()
         : Node("runtime_node") {
         imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
@@ -85,6 +92,21 @@ public:
                 RCLCPP_INFO(get_logger(), "query_status service called: %s", response->message.c_str());
             });
 
+        execute_task_server_ = rclcpp_action::create_server<ExecuteTask>(
+            this,
+            "runtime/execute_task",
+            [this](
+                const rclcpp_action::GoalUUID&,
+                std::shared_ptr<const ExecuteTask::Goal> goal) {
+                return handleGoal(goal);
+            },
+            [this](const std::shared_ptr<GoalHandleExecuteTask> goal_handle) {
+                return handleCancel(goal_handle);
+            },
+            [this](const std::shared_ptr<GoalHandleExecuteTask> goal_handle) {
+                handleAccepted(goal_handle);
+            });
+
         heartbeat_timer_ = create_wall_timer(1s, [this] {
             updateRuntimeState();
             RCLCPP_INFO(
@@ -94,7 +116,21 @@ public:
         });
     }
 
+    ~RuntimeNode() override {
+        if (task_thread_.joinable()) {
+            task_thread_.join();
+        }
+    }
+
 private:
+    enum class TaskState {
+        IDLE,
+        RUNNING,
+        COMPLETED,
+        CANCELED,
+        FAILED,
+    };
+
     double latencyMs(
         const builtin_interfaces::msg::Time& stamp,
         const rclcpp::Time& received_at) const {
@@ -117,6 +153,111 @@ private:
             : "FAULT";
     }
 
+    rclcpp_action::GoalResponse handleGoal(
+        const std::shared_ptr<const ExecuteTask::Goal> goal) {
+        if (goal->target_steps <= 0) {
+            RCLCPP_WARN(
+                get_logger(),
+                "rejecting execute_task goal: target_steps=%d must be positive",
+                goal->target_steps);
+            return rclcpp_action::GoalResponse::REJECT;
+        }
+
+        bool expected = false;
+        if (!task_active_.compare_exchange_strong(expected, true)) {
+            RCLCPP_WARN(get_logger(), "rejecting execute_task goal: another task is active");
+            return rclcpp_action::GoalResponse::REJECT;
+        }
+
+        task_state_.store(TaskState::RUNNING);
+        task_current_step_.store(0);
+        RCLCPP_INFO(
+            get_logger(),
+            "accepted execute_task goal target_steps=%d",
+            goal->target_steps);
+        return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+    }
+
+    rclcpp_action::CancelResponse handleCancel(
+        const std::shared_ptr<GoalHandleExecuteTask>) {
+        RCLCPP_INFO(get_logger(), "received execute_task cancel request");
+        return rclcpp_action::CancelResponse::ACCEPT;
+    }
+
+    void handleAccepted(const std::shared_ptr<GoalHandleExecuteTask> goal_handle) {
+        if (task_thread_.joinable()) {
+            task_thread_.join();
+        }
+        task_thread_ = std::thread([this, goal_handle] {
+            executeTask(goal_handle);
+        });
+    }
+
+    void executeTask(const std::shared_ptr<GoalHandleExecuteTask> goal_handle) {
+        const auto goal = goal_handle->get_goal();
+        auto feedback = std::make_shared<ExecuteTask::Feedback>();
+        auto result = std::make_shared<ExecuteTask::Result>();
+
+        for (int32_t step = 1; step <= goal->target_steps; ++step) {
+            if (goal_handle->is_canceling()) {
+                task_current_step_.store(step - 1);
+                task_state_.store(TaskState::CANCELED);
+                result->success = false;
+                result->message =
+                    "task canceled at step " + std::to_string(step - 1);
+                goal_handle->canceled(result);
+                task_active_.store(false);
+                RCLCPP_WARN(get_logger(), "%s", result->message.c_str());
+                return;
+            }
+
+            if (!rclcpp::ok()) {
+                task_state_.store(TaskState::FAILED);
+                result->success = false;
+                result->message = "task aborted because ROS2 is shutting down";
+                goal_handle->abort(result);
+                task_active_.store(false);
+                return;
+            }
+
+            std::this_thread::sleep_for(200ms);
+            task_current_step_.store(step);
+            feedback->current_step = step;
+            feedback->progress =
+                static_cast<float>(step) / static_cast<float>(goal->target_steps);
+            goal_handle->publish_feedback(feedback);
+            RCLCPP_INFO(
+                get_logger(),
+                "execute_task feedback step=%d/%d progress=%.2f",
+                step,
+                goal->target_steps,
+                feedback->progress);
+        }
+
+        task_state_.store(TaskState::COMPLETED);
+        result->success = true;
+        result->message = "task completed";
+        goal_handle->succeed(result);
+        task_active_.store(false);
+        RCLCPP_INFO(get_logger(), "execute_task completed");
+    }
+
+    static const char* taskStateName(TaskState state) {
+        switch (state) {
+            case TaskState::IDLE:
+                return "IDLE";
+            case TaskState::RUNNING:
+                return "RUNNING";
+            case TaskState::COMPLETED:
+                return "COMPLETED";
+            case TaskState::CANCELED:
+                return "CANCELED";
+            case TaskState::FAILED:
+                return "FAILED";
+        }
+        return "UNKNOWN";
+    }
+
     std::string buildStatusSummary() const {
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(2)
@@ -127,7 +268,9 @@ private:
             << " latest_joint_count=" << latest_joint_count_
             << " imu_latency_ms=" << latest_imu_latency_ms_
             << " joint_latency_ms=" << latest_joint_latency_ms_
-            << " joint_valid=" << static_cast<int>(latest_joint_valid_);
+            << " joint_valid=" << static_cast<int>(latest_joint_valid_)
+            << " task_state=" << taskStateName(task_state_.load())
+            << " task_step=" << task_current_step_.load();
         return oss.str();
     }
 
@@ -135,7 +278,12 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr query_status_service_;
+    rclcpp_action::Server<ExecuteTask>::SharedPtr execute_task_server_;
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
+    std::thread task_thread_;
+    std::atomic<bool> task_active_{false};
+    std::atomic<TaskState> task_state_{TaskState::IDLE};
+    std::atomic<int32_t> task_current_step_{0};
     std::string runtime_state_ = "BOOTING";
     std::size_t imu_count_ = 0;
     std::size_t joint_count_ = 0;
