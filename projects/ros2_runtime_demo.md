@@ -83,10 +83,10 @@ bash scripts/verify_ros2_runtime_demo.sh
 
 ```txt
 [sensor_sim_node]: published sensors seq=... imu_ax=... imu_az=9.8 joint_1=...
-[runtime_node]: runtime status state=RUNNING imu_count=... joint_count=... latest_accel_z=9.80 latest_joint_count=3 imu_latency_ms=... joint_latency_ms=... joint_valid=1
+[runtime_node]: runtime status state=STANDBY runtime_error=NONE imu_count=... joint_count=... latest_accel_z=9.80 latest_joint_count=3 imu_latency_ms=... joint_latency_ms=... joint_valid=1
 average rate: 9....
 std_srvs.srv.Trigger_Response(success=True, message='runtime fault state cleared')
-std_srvs.srv.Trigger_Response(success=True, message='state=RUNNING imu_count=... joint_count=... latest_accel_z=9.80 latest_joint_count=3 imu_latency_ms=... joint_latency_ms=... joint_valid=1')
+std_srvs.srv.Trigger_Response(success=True, message='state=STANDBY runtime_error=NONE imu_count=... joint_count=... latest_accel_z=9.80 latest_joint_count=3 imu_latency_ms=... joint_latency_ms=... joint_valid=1')
 Goal accepted with ID: ...
 Feedback: current_step: ... progress: ...
 Result: success: true message: task completed
@@ -188,6 +188,13 @@ colcon=/usr/bin/colcon
 - 已在 WSL2 Ubuntu 24.04.4 LTS / ROS2 Jazzy 中完成真实 ROS2 验收，最终输出 `[ok] ROS2 runtime demo verified: typed topics, runtime health, query/reset services, and execute_task Action completion/rejection/cancellation are working`。
 - 实测合法 goal `{target_steps: 10}` 连续输出 feedback 并以 `SUCCEEDED` 完成；非法 goal `{target_steps: 0}` 被拒绝；取消测试返回 `task canceled at step 4`。
 
+2026-07-27 实现：
+
+- `runtime_node` 新增显式运行时状态机：`IDLE`、`STANDBY`、`RUNNING`、`FAULT`、`RECOVERY`。
+- `processRuntimeEvent()` 承接状态转换表，把 `SensorHealthy`、`SensorTimeout`、`JointInvalid`、`StartTask`、`TaskSucceeded`、`TaskCanceled`、`TaskFailed`、`ResetFault`、`RecoveryDone` 落到代码分支。
+- 状态摘要新增 `runtime_error`，健康待命时为 `state=STANDBY runtime_error=NONE`，Action 执行期间为 `state=RUNNING`。
+- 已在 WSL2 Ubuntu 24.04.4 LTS / ROS2 Jazzy 中完成真实 ROS2 验收，Action 取消时可看到 `runtime transition RUNNING --TaskCanceled--> STANDBY error=NONE`。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -195,7 +202,7 @@ colcon=/usr/bin/colcon
 - `package.xml` 声明 package 元信息，以及 Topic、Service、Action 与接口生成依赖。
 - `CMakeLists.txt` 生成 `ExecuteTask` 接口，编译 runtime、传感器节点与 Action 取消测试客户端。
 - `sensor_sim_node.cpp` 展示 typed Topic publisher，模拟 IMU 和关节状态持续输出数据。
-- `runtime_node.cpp` 展示 typed Topic subscriber、健康判断、状态查询/故障复位 Service，以及可反馈、可取消的 Action server。
+- `runtime_node.cpp` 展示 typed Topic subscriber、显式运行时状态机、健康判断、状态查询/故障复位 Service，以及可反馈、可取消的 Action server。
 - 构建后必须 `source install/setup.bash`，否则当前 shell 找不到新 package。
 - `scripts/verify_ros2_runtime_demo.sh` 是验收入口，用来补齐环境检查、构建、launch 启动、Topic 发布/订阅检查。
 

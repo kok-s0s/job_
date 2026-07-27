@@ -254,7 +254,8 @@ if ! grep -q "std_srvs/srv/Trigger" "${QUERY_SERVICE_TYPE_FILE}"; then
 fi
 
 if ! grep -q "success=True" "${QUERY_SERVICE_OUTPUT_FILE}" ||
-  ! grep -q "state=RUNNING" "${QUERY_SERVICE_OUTPUT_FILE}" ||
+  ! grep -Eq "state=(STANDBY|RUNNING)" "${QUERY_SERVICE_OUTPUT_FILE}" ||
+  ! grep -q "runtime_error=NONE" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "imu_count=.*joint_count=.*imu_latency_ms=.*joint_latency_ms=.*joint_valid=1" "${QUERY_SERVICE_OUTPUT_FILE}"; then
   echo "query_status service response did not include the expected runtime summary" >&2
   rm -f "${OUTPUT_FILE}"
@@ -291,6 +292,7 @@ if ! grep -q "Goal accepted" "${ACTION_OUTPUT_FILE}" ||
 fi
 
 if ! grep -q "success=True" "${ACTION_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "state=RUNNING" "${ACTION_QUERY_OUTPUT_FILE}" ||
   ! grep -q "task_state=RUNNING" "${ACTION_QUERY_OUTPUT_FILE}"; then
   echo "query_status did not respond while execute_task was running" >&2
   exit 1
