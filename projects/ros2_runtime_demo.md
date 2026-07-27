@@ -185,6 +185,8 @@ colcon=/usr/bin/colcon
 - 正常路径返回 `task completed`；取消路径返回 `task canceled at step N`；ROS2 退出时进入 abort 路径。
 - 状态摘要新增 `task_state` 和 `task_step`，方便在任务执行期间通过 `/runtime/query_status` 观察进度。
 - 新增 `action_cancel_test_client` 和自动验收步骤，覆盖完成、非法 goal 拒绝、执行期间查询与主动取消。
+- 已在 WSL2 Ubuntu 24.04.4 LTS / ROS2 Jazzy 中完成真实 ROS2 验收，最终输出 `[ok] ROS2 runtime demo verified: typed topics, runtime health, query/reset services, and execute_task Action completion/rejection/cancellation are working`。
+- 实测合法 goal `{target_steps: 10}` 连续输出 feedback 并以 `SUCCEEDED` 完成；非法 goal `{target_steps: 0}` 被拒绝；取消测试返回 `task canceled at step 4`。
 
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 

@@ -284,7 +284,7 @@ fi
 if ! grep -q "Goal accepted" "${ACTION_OUTPUT_FILE}" ||
   ! grep -q "current_step" "${ACTION_OUTPUT_FILE}" ||
   ! grep -q "progress" "${ACTION_OUTPUT_FILE}" ||
-  ! grep -q "success=True" "${ACTION_OUTPUT_FILE}" ||
+  ! grep -Eq "success[:=][[:space:]]*(true|True)" "${ACTION_OUTPUT_FILE}" ||
   ! grep -q "task completed" "${ACTION_OUTPUT_FILE}"; then
   echo "execute_task normal completion output was not observed" >&2
   exit 1
@@ -296,7 +296,7 @@ if ! grep -q "success=True" "${ACTION_QUERY_OUTPUT_FILE}" ||
   exit 1
 fi
 
-if ! grep -q "Goal rejected" "${ACTION_REJECT_OUTPUT_FILE}"; then
+if ! grep -Eq "Goal (was )?rejected" "${ACTION_REJECT_OUTPUT_FILE}"; then
   echo "execute_task invalid-goal rejection was not observed" >&2
   exit 1
 fi
