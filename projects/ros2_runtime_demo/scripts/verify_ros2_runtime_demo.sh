@@ -48,6 +48,10 @@ set +u
 source "${WORKSPACE_DIR}/install/setup.bash"
 set -u
 
+echo "[state-machine] runtime_state_machine_demo"
+STATE_MACHINE_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_state_machine_demo >"${STATE_MACHINE_OUTPUT_FILE}" 2>&1
+
 echo "[run] ${PACKAGE_NAME}/${LAUNCH_FILE}"
 OUTPUT_FILE=$(mktemp)
 
@@ -136,6 +140,13 @@ cat "${ACTION_OUTPUT_FILE}"
 cat "${ACTION_QUERY_OUTPUT_FILE}"
 cat "${ACTION_REJECT_OUTPUT_FILE}"
 cat "${ACTION_CANCEL_OUTPUT_FILE}"
+cat "${STATE_MACHINE_OUTPUT_FILE}"
+
+if ! grep -q "\[ok\] runtime state machine transitions verified" "${STATE_MACHINE_OUTPUT_FILE}"; then
+  echo "runtime_state_machine_demo output was not observed" >&2
+  rm -f "${STATE_MACHINE_OUTPUT_FILE}"
+  exit 1
+fi
 
 if ! grep -q "published sensors" "${OUTPUT_FILE}"; then
   echo "typed sensor publisher output was not observed" >&2
@@ -326,4 +337,5 @@ rm -f "${ACTION_OUTPUT_FILE}"
 rm -f "${ACTION_QUERY_OUTPUT_FILE}"
 rm -f "${ACTION_REJECT_OUTPUT_FILE}"
 rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: typed topics, runtime health, query/reset services, and execute_task Action completion/rejection/cancellation are working"
+rm -f "${STATE_MACHINE_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: state machine demo, typed topics, runtime health, query/reset services, and execute_task Action completion/rejection/cancellation are working"

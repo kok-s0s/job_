@@ -31,14 +31,18 @@ add_executable(action_cancel_test_client src/action_cancel_test_client.cpp)
 ament_target_dependencies(action_cancel_test_client action_msgs rclcpp rclcpp_action)
 target_link_libraries(action_cancel_test_client "${cpp_typesupport_target}")
 
+add_executable(runtime_state_machine_demo src/runtime_state_machine_demo.cpp)
+
 target_compile_features(runtime_node PRIVATE cxx_std_17)
 target_compile_features(sensor_sim_node PRIVATE cxx_std_17)
 target_compile_features(action_cancel_test_client PRIVATE cxx_std_17)
+target_compile_features(runtime_state_machine_demo PRIVATE cxx_std_17)
 
 install(TARGETS
   runtime_node
   sensor_sim_node
   action_cancel_test_client
+  runtime_state_machine_demo
   DESTINATION lib/${PROJECT_NAME}
 )
 

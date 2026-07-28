@@ -7,6 +7,7 @@
 - [2026-07-22：ROS2 状态订阅节点](/roadmap/daily/2026-07-22)
 - [2026-07-23：ROS2 状态查询 Service](/roadmap/daily/2026-07-23)
 - [2026-07-24：ROS2 Action 模拟任务](/roadmap/daily/2026-07-24)
+- [2026-07-28：C++ RuntimeStateMachine 核心类](/roadmap/daily/2026-07-28)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -28,8 +29,10 @@ robot_runtime_demo/
 ├── package.xml
 └── src/
     ├── action_cancel_test_client.cpp
+    ├── runtime_node.cpp
+    ├── runtime_state_machine.hpp
+    ├── runtime_state_machine_demo.cpp
     ├── sensor_sim_node.cpp
-    └── runtime_node.cpp
 ```
 
 ## 这个 demo 在模拟什么
@@ -42,6 +45,8 @@ robot_runtime_demo/
 - `/runtime/query_status`：一个 `std_srvs/srv/Trigger` 服务，用来主动查询 runtime 当前状态、接收计数、延迟和 JointState 合法性。
 - `/runtime/execute_task`：一个自定义 Action，用来执行模拟长耗时任务，持续返回 step/progress feedback，并支持取消。
 - `action_cancel_test_client`：自动发送 30 步任务，在收到 feedback 后发起取消，并验证 canceled result。
+- `runtime_state_machine.hpp`：纯 C++ 状态机核心，负责 `IDLE/STANDBY/RUNNING/FAULT/RECOVERY` 的转换和错误码维护。
+- `runtime_state_machine_demo`：脱离 ROS2 通信的最小状态机验收程序，覆盖正常、故障、恢复和无效事件路径。
 - `runtime_demo.launch.py`：一次启动两个节点，演示 ROS2 多进程节点协作。
 
 这就是 ROS2 最常见的使用方式：把机器人系统拆成多个 node，用 Topic 传连续数据，用 Service 做一次性请求/响应，用 Action 管理可反馈、可取消的长耗时任务，用 launch 管理启动。
@@ -82,6 +87,7 @@ bash scripts/verify_ros2_runtime_demo.sh
 预期能看到 Topic、Service 和 Action 输出：
 
 ```txt
+[ok] runtime state machine transitions verified
 [sensor_sim_node]: published sensors seq=... imu_ax=... imu_az=9.8 joint_1=...
 [runtime_node]: runtime status state=STANDBY runtime_error=NONE imu_count=... joint_count=... latest_accel_z=9.80 latest_joint_count=3 imu_latency_ms=... joint_latency_ms=... joint_valid=1
 average rate: 9....
@@ -98,6 +104,7 @@ cancel_result ... success=0 message="task canceled at step ..." feedback_count=.
 - 检查 `ros2`、`ROS_DISTRO=humble/jazzy`、`colcon`。
 - 执行 `colcon build --packages-select robot_runtime_demo`。
 - `source install/setup.bash` 后限时运行 `ros2 launch robot_runtime_demo runtime_demo.launch.py`。
+- 运行 `ros2 run robot_runtime_demo runtime_state_machine_demo`，验证纯 C++ 状态机转换表。
 - 检查 `/robot/imu` 和 `/robot/joint_states` 各能 echo 一条 typed message。
 - 检查 `/robot/imu` 和 `/robot/joint_states` 能输出 topic 频率。
 - 调用 `/runtime/reset_fault` service。
@@ -135,6 +142,7 @@ ros2 service list
 ros2 service type /runtime/query_status
 ros2 service call /runtime/query_status std_srvs/srv/Trigger {}
 ros2 service call /runtime/reset_fault std_srvs/srv/Trigger {}
+ros2 run robot_runtime_demo runtime_state_machine_demo
 ros2 action list -t
 ros2 interface show robot_runtime_demo/action/ExecuteTask
 ros2 action send_goal --feedback /runtime/execute_task \
@@ -156,7 +164,8 @@ colcon=/usr/bin/colcon
 验证脚本最终输出：
 
 ```txt
-[ok] ROS2 runtime demo verified: typed sensor publishers, runtime health subscriber, query/reset services, topic hz, and launch startup are working
+[ok] runtime state machine transitions verified
+[ok] ROS2 runtime demo verified: state machine demo, typed topics, runtime health, query/reset services, and execute_task Action completion/rejection/cancellation are working
 ```
 
 本次实测频率：
@@ -195,6 +204,14 @@ colcon=/usr/bin/colcon
 - 状态摘要新增 `runtime_error`，健康待命时为 `state=STANDBY runtime_error=NONE`，Action 执行期间为 `state=RUNNING`。
 - 已在 WSL2 Ubuntu 24.04.4 LTS / ROS2 Jazzy 中完成真实 ROS2 验收，Action 取消时可看到 `runtime transition RUNNING --TaskCanceled--> STANDBY error=NONE`。
 
+2026-07-28 实现：
+
+- 新增 `runtime_state_machine.hpp`，把状态、事件、错误码和 `RuntimeStateMachine::process()` 从 ROS2 node 中抽成纯 C++ 核心。
+- 新增 `runtime_state_machine_demo.cpp`，覆盖 9 条有效状态转换，并验证 `Fault + SensorHealthy`、`Standby + TaskSucceeded` 这类无效事件不会修改状态。
+- `runtime_node` 改为把 Topic、Service、Action 回调转换为 `RuntimeEvent`，状态转换和错误码维护统一交给 `RuntimeStateMachine`。
+- `CMakeLists.txt` 安装 `runtime_state_machine_demo`，`verify_ros2_runtime_demo.sh` 已把它纳入自动验收。
+- 已在 WSL2 Ubuntu 24.04.4 LTS / ROS2 Jazzy 中完成真实 ROS2 验收，最终输出包含 `[ok] runtime state machine transitions verified` 和完整 ROS2 demo `[ok]`。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -202,9 +219,10 @@ colcon=/usr/bin/colcon
 - `package.xml` 声明 package 元信息，以及 Topic、Service、Action 与接口生成依赖。
 - `CMakeLists.txt` 生成 `ExecuteTask` 接口，编译 runtime、传感器节点与 Action 取消测试客户端。
 - `sensor_sim_node.cpp` 展示 typed Topic publisher，模拟 IMU 和关节状态持续输出数据。
-- `runtime_node.cpp` 展示 typed Topic subscriber、显式运行时状态机、健康判断、状态查询/故障复位 Service，以及可反馈、可取消的 Action server。
+- `runtime_state_machine.hpp` 展示纯 C++ 运行时状态机，便于脱离 ROS2 做快速验证和复盘。
+- `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service，以及可反馈、可取消的 Action server。
 - 构建后必须 `source install/setup.bash`，否则当前 shell 找不到新 package。
-- `scripts/verify_ros2_runtime_demo.sh` 是验收入口，用来补齐环境检查、构建、launch 启动、Topic 发布/订阅检查。
+- `scripts/verify_ros2_runtime_demo.sh` 是验收入口，用来补齐环境检查、状态机 demo、构建、launch 启动、Topic 发布/订阅检查。
 
 ## ROS2 适合什么应用场景
 
