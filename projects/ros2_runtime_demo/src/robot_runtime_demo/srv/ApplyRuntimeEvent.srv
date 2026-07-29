@@ -1,0 +1,8 @@
+string event
+---
+bool accepted
+bool transitioned
+string previous_state
+string current_state
+string runtime_error
+string message

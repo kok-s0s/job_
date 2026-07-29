@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -12,6 +13,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "robot_runtime_demo/action/execute_task.hpp"
+#include "robot_runtime_demo/srv/apply_runtime_event.hpp"
 #include "runtime_state_machine.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
@@ -22,6 +24,7 @@ using namespace std::chrono_literals;
 class RuntimeNode : public rclcpp::Node {
 public:
     using ExecuteTask = robot_runtime_demo::action::ExecuteTask;
+    using ApplyRuntimeEvent = robot_runtime_demo::srv::ApplyRuntimeEvent;
     using GoalHandleExecuteTask = rclcpp_action::ServerGoalHandle<ExecuteTask>;
 
     RuntimeNode()
@@ -94,6 +97,14 @@ public:
                 RCLCPP_INFO(get_logger(), "query_status service called: %s", response->message.c_str());
             });
 
+        apply_event_service_ = create_service<ApplyRuntimeEvent>(
+            "runtime/apply_event",
+            [this](
+                const std::shared_ptr<ApplyRuntimeEvent::Request> request,
+                std::shared_ptr<ApplyRuntimeEvent::Response> response) {
+                handleApplyEvent(request, response);
+            });
+
         execute_task_server_ = rclcpp_action::create_server<ExecuteTask>(
             this,
             "runtime/execute_task",
@@ -133,6 +144,13 @@ private:
         FAILED,
     };
 
+    struct RuntimeTransition {
+        RuntimeState previous_state;
+        RuntimeState current_state;
+        RuntimeError runtime_error;
+        bool transitioned;
+    };
+
     double latencyMs(
         const builtin_interfaces::msg::Time& stamp,
         const rclcpp::Time& received_at) const {
@@ -161,16 +179,14 @@ private:
             return;
         }
 
-        processRuntimeEvent(
-            currentRuntimeState() == RuntimeState::Recovery
-                ? RuntimeEvent::RecoveryDone
-                : RuntimeEvent::SensorHealthy);
+        processRuntimeEvent(RuntimeEvent::SensorHealthy);
     }
 
-    void processRuntimeEvent(RuntimeEvent event) {
+    RuntimeTransition processRuntimeEvent(RuntimeEvent event) {
         std::lock_guard<std::mutex> lock(runtime_state_mutex_);
         const auto current = runtime_state_machine_.state();
-        if (runtime_state_machine_.process(event)) {
+        const bool transitioned = runtime_state_machine_.process(event);
+        if (transitioned) {
             RCLCPP_INFO(
                 get_logger(),
                 "runtime transition %s --%s--> %s error=%s",
@@ -179,6 +195,47 @@ private:
                 stateName(runtime_state_machine_.state()),
                 errorName(runtime_state_machine_.error()));
         }
+        return RuntimeTransition{
+            current,
+            runtime_state_machine_.state(),
+            runtime_state_machine_.error(),
+            transitioned,
+        };
+    }
+
+    void handleApplyEvent(
+        const std::shared_ptr<ApplyRuntimeEvent::Request> request,
+        std::shared_ptr<ApplyRuntimeEvent::Response> response) {
+        const auto event = parseRuntimeEvent(request->event);
+        if (!event.has_value()) {
+            response->accepted = false;
+            response->transitioned = false;
+            response->previous_state = stateName(currentRuntimeState());
+            response->current_state = response->previous_state;
+            response->runtime_error = errorName(currentRuntimeError());
+            response->message = "unknown runtime event: " + request->event;
+            RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
+            return;
+        }
+
+        const auto result = processRuntimeEvent(*event);
+        response->accepted = true;
+        response->transitioned = result.transitioned;
+        response->previous_state = stateName(result.previous_state);
+        response->current_state = stateName(result.current_state);
+        response->runtime_error = errorName(result.runtime_error);
+        response->message =
+            result.transitioned
+                ? "runtime event applied: " + request->event
+                : "runtime event accepted but ignored in current state: " + request->event;
+        RCLCPP_INFO(
+            get_logger(),
+            "apply_event event=%s accepted=1 transitioned=%d previous=%s current=%s error=%s",
+            request->event.c_str(),
+            static_cast<int>(response->transitioned),
+            response->previous_state.c_str(),
+            response->current_state.c_str(),
+            response->runtime_error.c_str());
     }
 
     rclcpp_action::GoalResponse handleGoal(
@@ -300,9 +357,45 @@ private:
         return "UNKNOWN";
     }
 
+    static std::optional<RuntimeEvent> parseRuntimeEvent(const std::string& event_name) {
+        if (event_name == "SensorHealthy") {
+            return RuntimeEvent::SensorHealthy;
+        }
+        if (event_name == "SensorTimeout") {
+            return RuntimeEvent::SensorTimeout;
+        }
+        if (event_name == "JointInvalid") {
+            return RuntimeEvent::JointInvalid;
+        }
+        if (event_name == "StartTask") {
+            return RuntimeEvent::StartTask;
+        }
+        if (event_name == "TaskSucceeded") {
+            return RuntimeEvent::TaskSucceeded;
+        }
+        if (event_name == "TaskCanceled") {
+            return RuntimeEvent::TaskCanceled;
+        }
+        if (event_name == "TaskFailed") {
+            return RuntimeEvent::TaskFailed;
+        }
+        if (event_name == "ResetFault") {
+            return RuntimeEvent::ResetFault;
+        }
+        if (event_name == "RecoveryDone") {
+            return RuntimeEvent::RecoveryDone;
+        }
+        return std::nullopt;
+    }
+
     RuntimeState currentRuntimeState() const {
         std::lock_guard<std::mutex> lock(runtime_state_mutex_);
         return runtime_state_machine_.state();
+    }
+
+    RuntimeError currentRuntimeError() const {
+        std::lock_guard<std::mutex> lock(runtime_state_mutex_);
+        return runtime_state_machine_.error();
     }
 
     std::string buildStatusSummary() const {
@@ -334,6 +427,7 @@ private:
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr query_status_service_;
+    rclcpp::Service<ApplyRuntimeEvent>::SharedPtr apply_event_service_;
     rclcpp_action::Server<ExecuteTask>::SharedPtr execute_task_server_;
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     std::thread task_thread_;

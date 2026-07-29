@@ -15,6 +15,7 @@ find_package(std_srvs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/ExecuteTask.action"
+  "srv/ApplyRuntimeEvent.srv"
 )
 
 add_executable(runtime_node src/runtime_node.cpp)
@@ -49,6 +50,7 @@ install(TARGETS
 install(DIRECTORY
   action
   launch
+  srv
   DESTINATION share/${PROJECT_NAME}
 )
 

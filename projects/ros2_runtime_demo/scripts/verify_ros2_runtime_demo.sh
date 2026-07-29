@@ -92,9 +92,36 @@ echo "[service] /runtime/query_status"
 QUERY_SERVICE_LIST_FILE=$(mktemp)
 QUERY_SERVICE_TYPE_FILE=$(mktemp)
 QUERY_SERVICE_OUTPUT_FILE=$(mktemp)
+APPLY_EVENT_TYPE_FILE=$(mktemp)
+APPLY_EVENT_TIMEOUT_FILE=$(mktemp)
+APPLY_EVENT_UNKNOWN_FILE=$(mktemp)
+APPLY_EVENT_RESET_FILE=$(mktemp)
+APPLY_EVENT_RECOVERY_FILE=$(mktemp)
+APPLY_EVENT_QUERY_OUTPUT_FILE=$(mktemp)
 ros2 service list >"${QUERY_SERVICE_LIST_FILE}" 2>&1
 ros2 service type /runtime/query_status >"${QUERY_SERVICE_TYPE_FILE}" 2>&1
 timeout 5s ros2 service call /runtime/query_status std_srvs/srv/Trigger "{}" >"${QUERY_SERVICE_OUTPUT_FILE}" 2>&1
+
+echo "[service] /runtime/apply_event"
+ros2 service type /runtime/apply_event >"${APPLY_EVENT_TYPE_FILE}" 2>&1
+timeout 5s ros2 service call \
+  /runtime/apply_event \
+  robot_runtime_demo/srv/ApplyRuntimeEvent \
+  "{event: SensorTimeout}" >"${APPLY_EVENT_TIMEOUT_FILE}" 2>&1
+timeout 5s ros2 service call \
+  /runtime/apply_event \
+  robot_runtime_demo/srv/ApplyRuntimeEvent \
+  "{event: NoSuchEvent}" >"${APPLY_EVENT_UNKNOWN_FILE}" 2>&1 || true
+timeout 5s ros2 service call \
+  /runtime/apply_event \
+  robot_runtime_demo/srv/ApplyRuntimeEvent \
+  "{event: ResetFault}" >"${APPLY_EVENT_RESET_FILE}" 2>&1
+timeout 5s ros2 service call \
+  /runtime/apply_event \
+  robot_runtime_demo/srv/ApplyRuntimeEvent \
+  "{event: RecoveryDone}" >"${APPLY_EVENT_RECOVERY_FILE}" 2>&1
+timeout 5s ros2 service call \
+  /runtime/query_status std_srvs/srv/Trigger "{}" >"${APPLY_EVENT_QUERY_OUTPUT_FILE}" 2>&1
 
 echo "[action] /runtime/execute_task"
 ACTION_LIST_FILE=$(mktemp)
@@ -134,6 +161,12 @@ cat "${SERVICE_OUTPUT_FILE}"
 cat "${QUERY_SERVICE_LIST_FILE}"
 cat "${QUERY_SERVICE_TYPE_FILE}"
 cat "${QUERY_SERVICE_OUTPUT_FILE}"
+cat "${APPLY_EVENT_TYPE_FILE}"
+cat "${APPLY_EVENT_TIMEOUT_FILE}"
+cat "${APPLY_EVENT_UNKNOWN_FILE}"
+cat "${APPLY_EVENT_RESET_FILE}"
+cat "${APPLY_EVENT_RECOVERY_FILE}"
+cat "${APPLY_EVENT_QUERY_OUTPUT_FILE}"
 cat "${ACTION_LIST_FILE}"
 cat "${ACTION_INTERFACE_FILE}"
 cat "${ACTION_OUTPUT_FILE}"
@@ -250,6 +283,11 @@ if ! grep -q "/runtime/query_status" "${QUERY_SERVICE_LIST_FILE}"; then
   exit 1
 fi
 
+if ! grep -q "/runtime/apply_event" "${QUERY_SERVICE_LIST_FILE}"; then
+  echo "apply_event service was not listed" >&2
+  exit 1
+fi
+
 if ! grep -q "std_srvs/srv/Trigger" "${QUERY_SERVICE_TYPE_FILE}"; then
   echo "query_status service type was not observed" >&2
   rm -f "${OUTPUT_FILE}"
@@ -261,6 +299,11 @@ if ! grep -q "std_srvs/srv/Trigger" "${QUERY_SERVICE_TYPE_FILE}"; then
   rm -f "${QUERY_SERVICE_LIST_FILE}"
   rm -f "${QUERY_SERVICE_TYPE_FILE}"
   rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "robot_runtime_demo/srv/ApplyRuntimeEvent" "${APPLY_EVENT_TYPE_FILE}"; then
+  echo "apply_event service type was not observed" >&2
   exit 1
 fi
 
@@ -278,6 +321,43 @@ if ! grep -q "success=True" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   rm -f "${QUERY_SERVICE_LIST_FILE}"
   rm -f "${QUERY_SERVICE_TYPE_FILE}"
   rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -Eq "accepted[:=][[:space:]]*(true|True)" "${APPLY_EVENT_TIMEOUT_FILE}" ||
+  ! grep -Eq "transitioned[:=][[:space:]]*(true|True)" "${APPLY_EVENT_TIMEOUT_FILE}" ||
+  ! grep -q "current_state='FAULT'" "${APPLY_EVENT_TIMEOUT_FILE}" ||
+  ! grep -q "runtime_error='SENSOR_TIMEOUT'" "${APPLY_EVENT_TIMEOUT_FILE}"; then
+  echo "apply_event SensorTimeout did not enter FAULT" >&2
+  exit 1
+fi
+
+if ! grep -Eq "accepted[:=][[:space:]]*(false|False)" "${APPLY_EVENT_UNKNOWN_FILE}" ||
+  ! grep -q "unknown runtime event: NoSuchEvent" "${APPLY_EVENT_UNKNOWN_FILE}"; then
+  echo "apply_event unknown event rejection was not observed" >&2
+  exit 1
+fi
+
+if ! grep -Eq "accepted[:=][[:space:]]*(true|True)" "${APPLY_EVENT_RESET_FILE}" ||
+  ! grep -Eq "transitioned[:=][[:space:]]*(true|True)" "${APPLY_EVENT_RESET_FILE}" ||
+  ! grep -q "current_state='RECOVERY'" "${APPLY_EVENT_RESET_FILE}" ||
+  ! grep -q "runtime_error='NONE'" "${APPLY_EVENT_RESET_FILE}"; then
+  echo "apply_event ResetFault did not enter RECOVERY" >&2
+  exit 1
+fi
+
+if ! grep -Eq "accepted[:=][[:space:]]*(true|True)" "${APPLY_EVENT_RECOVERY_FILE}" ||
+  ! grep -Eq "transitioned[:=][[:space:]]*(true|True)" "${APPLY_EVENT_RECOVERY_FILE}" ||
+  ! grep -q "current_state='STANDBY'" "${APPLY_EVENT_RECOVERY_FILE}" ||
+  ! grep -q "runtime_error='NONE'" "${APPLY_EVENT_RECOVERY_FILE}"; then
+  echo "apply_event RecoveryDone did not return to STANDBY" >&2
+  exit 1
+fi
+
+if ! grep -q "success=True" "${APPLY_EVENT_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "state=STANDBY" "${APPLY_EVENT_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "runtime_error=NONE" "${APPLY_EVENT_QUERY_OUTPUT_FILE}"; then
+  echo "query_status did not recover after apply_event chain" >&2
   exit 1
 fi
 
@@ -331,6 +411,12 @@ rm -f "${SERVICE_OUTPUT_FILE}"
 rm -f "${QUERY_SERVICE_LIST_FILE}"
 rm -f "${QUERY_SERVICE_TYPE_FILE}"
 rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
+rm -f "${APPLY_EVENT_TYPE_FILE}"
+rm -f "${APPLY_EVENT_TIMEOUT_FILE}"
+rm -f "${APPLY_EVENT_UNKNOWN_FILE}"
+rm -f "${APPLY_EVENT_RESET_FILE}"
+rm -f "${APPLY_EVENT_RECOVERY_FILE}"
+rm -f "${APPLY_EVENT_QUERY_OUTPUT_FILE}"
 rm -f "${ACTION_LIST_FILE}"
 rm -f "${ACTION_INTERFACE_FILE}"
 rm -f "${ACTION_OUTPUT_FILE}"
@@ -338,4 +424,4 @@ rm -f "${ACTION_QUERY_OUTPUT_FILE}"
 rm -f "${ACTION_REJECT_OUTPUT_FILE}"
 rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, typed topics, runtime health, query/reset services, and execute_task Action completion/rejection/cancellation are working"
+echo "[ok] ROS2 runtime demo verified: state machine demo, typed topics, runtime health, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
