@@ -78,6 +78,33 @@ bool expectFaultDoesNotAutoRecover() {
     return true;
 }
 
+bool expectErrorInfo(
+    RuntimeError error,
+    RuntimeSeverity expected_severity,
+    bool expected_recoverable,
+    const std::string& expected_hint) {
+    const auto info = errorInfo(error);
+    if (info.severity != expected_severity ||
+        info.recoverable != expected_recoverable ||
+        expected_hint != info.recovery_hint) {
+        std::cerr << "[fail] expected error info for "
+                  << errorName(error)
+                  << " severity=" << severityName(expected_severity)
+                  << " recoverable=" << expected_recoverable
+                  << " hint=" << expected_hint
+                  << ", got severity=" << severityName(info.severity)
+                  << " recoverable=" << info.recoverable
+                  << " hint=" << info.recovery_hint << '\n';
+        return false;
+    }
+    std::cout << "[case] "
+              << errorName(error)
+              << " severity=" << severityName(info.severity)
+              << " recoverable=" << info.recoverable
+              << " recovery_hint=" << info.recovery_hint << '\n';
+    return true;
+}
+
 }  // namespace
 
 int main() {
@@ -131,6 +158,21 @@ int main() {
     ok &= expectIgnored(
         RuntimeState::Standby,
         RuntimeEvent::TaskSucceeded);
+    ok &= expectErrorInfo(
+        RuntimeError::SensorTimeout,
+        RuntimeSeverity::Critical,
+        true,
+        "check sensor heartbeat then reset fault");
+    ok &= expectErrorInfo(
+        RuntimeError::JointStateInvalid,
+        RuntimeSeverity::Critical,
+        false,
+        "inspect joint state publisher shape");
+    ok &= expectErrorInfo(
+        RuntimeError::TaskFailed,
+        RuntimeSeverity::Warning,
+        true,
+        "inspect task result then reset fault");
 
     if (!ok) {
         return 1;

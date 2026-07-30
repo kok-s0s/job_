@@ -219,6 +219,7 @@ private:
         }
 
         const auto result = processRuntimeEvent(*event);
+        const auto info = errorInfo(result.runtime_error);
         response->accepted = true;
         response->transitioned = result.transitioned;
         response->previous_state = stateName(result.previous_state);
@@ -228,6 +229,11 @@ private:
             result.transitioned
                 ? "runtime event applied: " + request->event
                 : "runtime event accepted but ignored in current state: " + request->event;
+        response->message +=
+            std::string("; severity=") + severityName(info.severity) +
+            "; recoverable=" + std::to_string(static_cast<int>(info.recoverable)) +
+            "; reason=" + info.reason +
+            "; recovery_hint=" + info.recovery_hint;
         RCLCPP_INFO(
             get_logger(),
             "apply_event event=%s accepted=1 transitioned=%d previous=%s current=%s error=%s",
@@ -407,10 +413,15 @@ private:
             runtime_error = runtime_state_machine_.error();
         }
 
+        const auto info = errorInfo(runtime_error);
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(2)
             << "state=" << stateName(runtime_state)
             << " runtime_error=" << errorName(runtime_error)
+            << " runtime_severity=" << severityName(info.severity)
+            << " runtime_recoverable=" << static_cast<int>(info.recoverable)
+            << " runtime_reason=" << info.reason
+            << " runtime_recovery_hint=" << info.recovery_hint
             << " imu_count=" << imu_count_
             << " joint_count=" << joint_count_
             << " latest_accel_z=" << latest_accel_z_

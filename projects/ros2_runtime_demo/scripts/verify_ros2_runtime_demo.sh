@@ -94,6 +94,7 @@ QUERY_SERVICE_TYPE_FILE=$(mktemp)
 QUERY_SERVICE_OUTPUT_FILE=$(mktemp)
 APPLY_EVENT_TYPE_FILE=$(mktemp)
 APPLY_EVENT_TIMEOUT_FILE=$(mktemp)
+APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE=$(mktemp)
 APPLY_EVENT_UNKNOWN_FILE=$(mktemp)
 APPLY_EVENT_RESET_FILE=$(mktemp)
 APPLY_EVENT_RECOVERY_FILE=$(mktemp)
@@ -108,6 +109,8 @@ timeout 5s ros2 service call \
   /runtime/apply_event \
   robot_runtime_demo/srv/ApplyRuntimeEvent \
   "{event: SensorTimeout}" >"${APPLY_EVENT_TIMEOUT_FILE}" 2>&1
+timeout 5s ros2 service call \
+  /runtime/query_status std_srvs/srv/Trigger "{}" >"${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}" 2>&1
 timeout 5s ros2 service call \
   /runtime/apply_event \
   robot_runtime_demo/srv/ApplyRuntimeEvent \
@@ -163,6 +166,7 @@ cat "${QUERY_SERVICE_TYPE_FILE}"
 cat "${QUERY_SERVICE_OUTPUT_FILE}"
 cat "${APPLY_EVENT_TYPE_FILE}"
 cat "${APPLY_EVENT_TIMEOUT_FILE}"
+cat "${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}"
 cat "${APPLY_EVENT_UNKNOWN_FILE}"
 cat "${APPLY_EVENT_RESET_FILE}"
 cat "${APPLY_EVENT_RECOVERY_FILE}"
@@ -310,6 +314,8 @@ fi
 if ! grep -q "success=True" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -Eq "state=(STANDBY|RUNNING)" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_error=NONE" "${QUERY_SERVICE_OUTPUT_FILE}" ||
+  ! grep -q "runtime_severity=INFO" "${QUERY_SERVICE_OUTPUT_FILE}" ||
+  ! grep -q "runtime_recoverable=1" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "imu_count=.*joint_count=.*imu_latency_ms=.*joint_latency_ms=.*joint_valid=1" "${QUERY_SERVICE_OUTPUT_FILE}"; then
   echo "query_status service response did not include the expected runtime summary" >&2
   rm -f "${OUTPUT_FILE}"
@@ -327,8 +333,20 @@ fi
 if ! grep -Eq "accepted[:=][[:space:]]*(true|True)" "${APPLY_EVENT_TIMEOUT_FILE}" ||
   ! grep -Eq "transitioned[:=][[:space:]]*(true|True)" "${APPLY_EVENT_TIMEOUT_FILE}" ||
   ! grep -q "current_state='FAULT'" "${APPLY_EVENT_TIMEOUT_FILE}" ||
-  ! grep -q "runtime_error='SENSOR_TIMEOUT'" "${APPLY_EVENT_TIMEOUT_FILE}"; then
+  ! grep -q "runtime_error='SENSOR_TIMEOUT'" "${APPLY_EVENT_TIMEOUT_FILE}" ||
+  ! grep -q "severity=CRITICAL" "${APPLY_EVENT_TIMEOUT_FILE}" ||
+  ! grep -q "recovery_hint=check sensor heartbeat then reset fault" "${APPLY_EVENT_TIMEOUT_FILE}"; then
   echo "apply_event SensorTimeout did not enter FAULT" >&2
+  exit 1
+fi
+
+if ! grep -q "success=False" "${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "state=FAULT" "${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "runtime_error=SENSOR_TIMEOUT" "${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "runtime_severity=CRITICAL" "${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "runtime_recoverable=1" "${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "runtime_recovery_hint=check sensor heartbeat then reset fault" "${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}"; then
+  echo "query_status did not include expected fault severity metadata" >&2
   exit 1
 fi
 
@@ -356,7 +374,9 @@ fi
 
 if ! grep -q "success=True" "${APPLY_EVENT_QUERY_OUTPUT_FILE}" ||
   ! grep -q "state=STANDBY" "${APPLY_EVENT_QUERY_OUTPUT_FILE}" ||
-  ! grep -q "runtime_error=NONE" "${APPLY_EVENT_QUERY_OUTPUT_FILE}"; then
+  ! grep -q "runtime_error=NONE" "${APPLY_EVENT_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "runtime_severity=INFO" "${APPLY_EVENT_QUERY_OUTPUT_FILE}" ||
+  ! grep -q "runtime_recoverable=1" "${APPLY_EVENT_QUERY_OUTPUT_FILE}"; then
   echo "query_status did not recover after apply_event chain" >&2
   exit 1
 fi
@@ -413,6 +433,7 @@ rm -f "${QUERY_SERVICE_TYPE_FILE}"
 rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
 rm -f "${APPLY_EVENT_TYPE_FILE}"
 rm -f "${APPLY_EVENT_TIMEOUT_FILE}"
+rm -f "${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}"
 rm -f "${APPLY_EVENT_UNKNOWN_FILE}"
 rm -f "${APPLY_EVENT_RESET_FILE}"
 rm -f "${APPLY_EVENT_RECOVERY_FILE}"
@@ -424,4 +445,4 @@ rm -f "${ACTION_QUERY_OUTPUT_FILE}"
 rm -f "${ACTION_REJECT_OUTPUT_FILE}"
 rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, typed topics, runtime health, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+echo "[ok] ROS2 runtime demo verified: state machine demo, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"

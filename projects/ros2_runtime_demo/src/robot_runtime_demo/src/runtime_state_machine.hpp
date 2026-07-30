@@ -28,6 +28,19 @@ enum class RuntimeError {
     RecoveryFailed,
 };
 
+enum class RuntimeSeverity {
+    Info,
+    Warning,
+    Critical,
+};
+
+struct RuntimeErrorInfo {
+    RuntimeSeverity severity;
+    bool recoverable;
+    const char* reason;
+    const char* recovery_hint;
+};
+
 class RuntimeStateMachine {
 public:
     explicit RuntimeStateMachine(RuntimeState initial_state = RuntimeState::Idle)
@@ -184,4 +197,62 @@ inline const char* errorName(RuntimeError error) {
             return "RECOVERY_FAILED";
     }
     return "UNKNOWN";
+}
+
+inline const char* severityName(RuntimeSeverity severity) {
+    switch (severity) {
+        case RuntimeSeverity::Info:
+            return "INFO";
+        case RuntimeSeverity::Warning:
+            return "WARNING";
+        case RuntimeSeverity::Critical:
+            return "CRITICAL";
+    }
+    return "UNKNOWN";
+}
+
+inline RuntimeErrorInfo errorInfo(RuntimeError error) {
+    switch (error) {
+        case RuntimeError::None:
+            return RuntimeErrorInfo{
+                RuntimeSeverity::Info,
+                true,
+                "runtime healthy",
+                "no action required",
+            };
+        case RuntimeError::SensorTimeout:
+            return RuntimeErrorInfo{
+                RuntimeSeverity::Critical,
+                true,
+                "sensor heartbeat timeout",
+                "check sensor heartbeat then reset fault",
+            };
+        case RuntimeError::JointStateInvalid:
+            return RuntimeErrorInfo{
+                RuntimeSeverity::Critical,
+                false,
+                "joint state shape invalid",
+                "inspect joint state publisher shape",
+            };
+        case RuntimeError::TaskFailed:
+            return RuntimeErrorInfo{
+                RuntimeSeverity::Warning,
+                true,
+                "runtime task failed",
+                "inspect task result then reset fault",
+            };
+        case RuntimeError::RecoveryFailed:
+            return RuntimeErrorInfo{
+                RuntimeSeverity::Critical,
+                false,
+                "recovery path failed",
+                "stop runtime and inspect recovery path",
+            };
+    }
+    return RuntimeErrorInfo{
+        RuntimeSeverity::Critical,
+        false,
+        "unknown runtime error",
+        "stop runtime and inspect logs",
+    };
 }
