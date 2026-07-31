@@ -10,6 +10,7 @@
 - [2026-07-28：C++ RuntimeStateMachine 核心类](/roadmap/daily/2026-07-28)
 - [2026-07-29：ROS2 状态机事件接入 Service](/roadmap/daily/2026-07-29)
 - [2026-07-30：错误码语义化与故障恢复策略](/roadmap/daily/2026-07-30)
+- [2026-07-31：状态机面试讲稿与第 3 周验收](/roadmap/daily/2026-07-31)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -36,6 +37,7 @@ robot_runtime_demo/
     ├── runtime_node.cpp
     ├── runtime_state_machine.hpp
     ├── runtime_state_machine_demo.cpp
+    ├── runtime_state_machine_review.cpp
     ├── sensor_sim_node.cpp
 ```
 
@@ -53,6 +55,7 @@ robot_runtime_demo/
 - `action_cancel_test_client`：自动发送 30 步任务，在收到 feedback 后发起取消，并验证 canceled result。
 - `runtime_state_machine.hpp`：纯 C++ 状态机核心，负责 `IDLE/STANDBY/RUNNING/FAULT/RECOVERY` 的转换和错误码维护。
 - `runtime_state_machine_demo`：脱离 ROS2 通信的最小状态机验收程序，覆盖正常、故障、恢复和无效事件路径。
+- `runtime_state_machine_review`：第 3 周复盘可执行程序，输出状态转换表、错误语义和面试要点。
 - `runtime_demo.launch.py`：一次启动两个节点，演示 ROS2 多进程节点协作。
 
 这就是 ROS2 最常见的使用方式：把机器人系统拆成多个 node，用 Topic 传连续数据，用 Service 做一次性请求/响应，用 Action 管理可反馈、可取消的长耗时任务，用 launch 管理启动。
@@ -94,6 +97,7 @@ bash scripts/verify_ros2_runtime_demo.sh
 
 ```txt
 [ok] runtime state machine transitions verified
+[ok] week 3 runtime state machine review ready
 [sensor_sim_node]: published sensors seq=... imu_ax=... imu_az=9.8 joint_1=...
 [runtime_node]: runtime status state=STANDBY runtime_error=NONE runtime_severity=INFO runtime_recoverable=1 runtime_reason=runtime healthy runtime_recovery_hint=no action required imu_count=... joint_count=...
 average rate: 9....
@@ -112,6 +116,7 @@ cancel_result ... success=0 message="task canceled at step ..." feedback_count=.
 - 执行 `colcon build --packages-select robot_runtime_demo`。
 - `source install/setup.bash` 后限时运行 `ros2 launch robot_runtime_demo runtime_demo.launch.py`。
 - 运行 `ros2 run robot_runtime_demo runtime_state_machine_demo`，验证纯 C++ 状态机转换表。
+- 运行 `ros2 run robot_runtime_demo runtime_state_machine_review`，输出第 3 周状态机复盘表和面试要点。
 - 检查 `/robot/imu` 和 `/robot/joint_states` 各能 echo 一条 typed message。
 - 检查 `/robot/imu` 和 `/robot/joint_states` 能输出 topic 频率。
 - 调用 `/runtime/reset_fault` service。
@@ -159,6 +164,7 @@ ros2 service call /runtime/apply_event \
 ros2 service call /runtime/apply_event \
   robot_runtime_demo/srv/ApplyRuntimeEvent "{event: RecoveryDone}"
 ros2 run robot_runtime_demo runtime_state_machine_demo
+ros2 run robot_runtime_demo runtime_state_machine_review
 ros2 action list -t
 ros2 interface show robot_runtime_demo/action/ExecuteTask
 ros2 action send_goal --feedback /runtime/execute_task \
@@ -181,7 +187,8 @@ colcon=/usr/bin/colcon
 
 ```txt
 [ok] runtime state machine transitions verified
-[ok] ROS2 runtime demo verified: state machine demo, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
+[ok] week 3 runtime state machine review ready
+[ok] ROS2 runtime demo verified: state machine demo, week 3 review, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
 ```
 
 本次实测频率：
@@ -242,6 +249,13 @@ colcon=/usr/bin/colcon
 - `/runtime/apply_event` 的响应 message 会携带 severity、recoverable、reason 和 recovery_hint，故障触发时调用方能直接看到下一步操作。
 - 验收脚本新增故障态 query 检查，确认 `SensorTimeout` 后为 `runtime_severity=CRITICAL`，恢复后为 `runtime_severity=INFO runtime_recoverable=1`。
 
+2026-07-31 复盘重点：
+
+- 第 3 周产出已经形成一个可运行 ROS2 多节点状态机 demo：Topic 提供传感器流，Service 提供查询/复位/事件驱动，Action 提供可反馈、可取消任务。
+- 面试表达重点从“写了状态机”提升为“设计了一个可观测、可恢复、可测试的机器人运行时骨架”。
+- 新增 `runtime_state_machine_review`，可通过 `ros2 run robot_runtime_demo runtime_state_machine_review` 输出状态转换表、错误语义和面试要点。
+- 最终验收入口是 `bash scripts/verify_ros2_runtime_demo.sh`，覆盖构建、状态机 demo、周复盘程序、Topic、Service、Action、故障语义和恢复链。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -252,6 +266,7 @@ colcon=/usr/bin/colcon
 - `sensor_sim_node.cpp` 展示 typed Topic publisher，模拟 IMU 和关节状态持续输出数据。
 - `runtime_state_machine.hpp` 展示纯 C++ 运行时状态机，便于脱离 ROS2 做快速验证和复盘。
 - `runtime_state_machine.hpp` 同时维护错误码语义，统一提供 severity、recoverable、reason 和 recovery_hint。
+- `runtime_state_machine_review.cpp` 展示如何把一周成果变成可运行、可检查的复盘输出。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。
 - 构建后必须 `source install/setup.bash`，否则当前 shell 找不到新 package。
 - `scripts/verify_ros2_runtime_demo.sh` 是验收入口，用来补齐环境检查、状态机 demo、构建、launch 启动、Topic 发布/订阅检查。

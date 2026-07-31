@@ -52,6 +52,10 @@ echo "[state-machine] runtime_state_machine_demo"
 STATE_MACHINE_OUTPUT_FILE=$(mktemp)
 ros2 run "${PACKAGE_NAME}" runtime_state_machine_demo >"${STATE_MACHINE_OUTPUT_FILE}" 2>&1
 
+echo "[review] runtime_state_machine_review"
+STATE_MACHINE_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_state_machine_review >"${STATE_MACHINE_REVIEW_OUTPUT_FILE}" 2>&1
+
 echo "[run] ${PACKAGE_NAME}/${LAUNCH_FILE}"
 OUTPUT_FILE=$(mktemp)
 
@@ -178,10 +182,20 @@ cat "${ACTION_QUERY_OUTPUT_FILE}"
 cat "${ACTION_REJECT_OUTPUT_FILE}"
 cat "${ACTION_CANCEL_OUTPUT_FILE}"
 cat "${STATE_MACHINE_OUTPUT_FILE}"
+cat "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
 
 if ! grep -q "\[ok\] runtime state machine transitions verified" "${STATE_MACHINE_OUTPUT_FILE}"; then
   echo "runtime_state_machine_demo output was not observed" >&2
   rm -f "${STATE_MACHINE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[ok\] week 3 runtime state machine review ready" "${STATE_MACHINE_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "SensorTimeout" "${STATE_MACHINE_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "severity=CRITICAL" "${STATE_MACHINE_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "External callers send events, not target states" "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_state_machine_review output was not observed" >&2
+  rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
   exit 1
 fi
 
@@ -445,4 +459,5 @@ rm -f "${ACTION_QUERY_OUTPUT_FILE}"
 rm -f "${ACTION_REJECT_OUTPUT_FILE}"
 rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: state machine demo, week 3 review, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
