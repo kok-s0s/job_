@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
@@ -33,16 +34,15 @@ public:
             "/robot/imu",
             10,
             [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
+                const auto callback_started = now();
                 ++imu_count_;
-                last_imu_time_ = now();
+                last_imu_time_ = callback_started;
                 latest_imu_latency_ms_ = latencyMs(msg->header.stamp, last_imu_time_);
                 latest_accel_z_ = msg->linear_acceleration.z;
-                RCLCPP_INFO(
-                    get_logger(),
-                    "received imu count=%zu frame=%s accel_z=%.2f latency_ms=%.2f",
-                    imu_count_,
-                    msg->header.frame_id.c_str(),
-                    latest_accel_z_,
+                logRuntimeInfo(
+                    "topic_message",
+                    "received imu frame=" + msg->header.frame_id,
+                    elapsedMs(callback_started),
                     latest_imu_latency_ms_);
             });
 
@@ -50,8 +50,9 @@ public:
             "/robot/joint_states",
             10,
             [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
+                const auto callback_started = now();
                 ++joint_count_;
-                last_joint_time_ = now();
+                last_joint_time_ = callback_started;
                 latest_joint_latency_ms_ = latencyMs(msg->header.stamp, last_joint_time_);
                 latest_joint_count_ = msg->name.size();
                 latest_joint_valid_ =
@@ -59,20 +60,21 @@ public:
                     msg->position.size() == msg->name.size() &&
                     msg->velocity.size() == msg->name.size();
                 if (!latest_joint_valid_) {
-                    RCLCPP_WARN(
-                        get_logger(),
-                        "invalid joint_states shape names=%zu positions=%zu velocities=%zu",
-                        msg->name.size(),
-                        msg->position.size(),
-                        msg->velocity.size());
+                    std::ostringstream message;
+                    message << "invalid joint_states shape names=" << msg->name.size()
+                            << " positions=" << msg->position.size()
+                            << " velocities=" << msg->velocity.size();
+                    logRuntimeWarn(
+                        "invalid_joint_state",
+                        message.str(),
+                        elapsedMs(callback_started),
+                        latest_joint_latency_ms_);
                 }
-                RCLCPP_INFO(
-                    get_logger(),
-                    "received joint_states count=%zu joints=%zu latency_ms=%.2f valid=%d",
-                    joint_count_,
-                    latest_joint_count_,
-                    latest_joint_latency_ms_,
-                    latest_joint_valid_);
+                logRuntimeInfo(
+                    "topic_message",
+                    "received joint_states",
+                    elapsedMs(callback_started),
+                    latest_joint_latency_ms_);
             });
 
         reset_service_ = create_service<std_srvs::srv::Trigger>(
@@ -80,10 +82,15 @@ public:
             [this](
                 const std::shared_ptr<std_srvs::srv::Trigger::Request>,
                 std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+                const auto callback_started = now();
                 processRuntimeEvent(RuntimeEvent::ResetFault);
                 response->success = true;
                 response->message = "runtime fault state cleared";
-                RCLCPP_WARN(get_logger(), "reset_fault service called");
+                logRuntimeWarn(
+                    "service_call",
+                    "reset_fault accepted",
+                    elapsedMs(callback_started),
+                    0.0);
             });
 
         query_status_service_ = create_service<std_srvs::srv::Trigger>(
@@ -91,10 +98,15 @@ public:
             [this](
                 const std::shared_ptr<std_srvs::srv::Trigger::Request>,
                 std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+                const auto callback_started = now();
                 updateRuntimeState();
                 response->success = currentRuntimeState() != RuntimeState::Fault;
                 response->message = buildStatusSummary();
-                RCLCPP_INFO(get_logger(), "query_status service called: %s", response->message.c_str());
+                logRuntimeInfo(
+                    "service_call",
+                    "query_status " + response->message,
+                    elapsedMs(callback_started),
+                    0.0);
             });
 
         apply_event_service_ = create_service<ApplyRuntimeEvent>(
@@ -121,11 +133,13 @@ public:
             });
 
         heartbeat_timer_ = create_wall_timer(1s, [this] {
+            const auto callback_started = now();
             updateRuntimeState();
-            RCLCPP_INFO(
-                get_logger(),
-                "runtime status %s",
-                buildStatusSummary().c_str());
+            logRuntimeInfo(
+                "heartbeat",
+                "runtime status " + buildStatusSummary(),
+                elapsedMs(callback_started),
+                latestWorstLatencyMs());
         });
     }
 
@@ -158,6 +172,14 @@ private:
         return (received_at - sent_at).seconds() * 1000.0;
     }
 
+    double elapsedMs(const rclcpp::Time& started_at) const {
+        return (now() - started_at).seconds() * 1000.0;
+    }
+
+    double latestWorstLatencyMs() const {
+        return std::max(latest_imu_latency_ms_, latest_joint_latency_ms_);
+    }
+
     void updateRuntimeState() {
         if (imu_count_ == 0 || joint_count_ == 0) {
             std::lock_guard<std::mutex> lock(runtime_state_mutex_);
@@ -187,13 +209,23 @@ private:
         const auto current = runtime_state_machine_.state();
         const bool transitioned = runtime_state_machine_.process(event);
         if (transitioned) {
+            const std::string message =
+                std::string("runtime transition ") + stateName(current) +
+                " --" + eventName(event) + "--> " +
+                stateName(runtime_state_machine_.state()) +
+                " error=" + errorName(runtime_state_machine_.error());
             RCLCPP_INFO(
                 get_logger(),
-                "runtime transition %s --%s--> %s error=%s",
-                stateName(current),
-                eventName(event),
-                stateName(runtime_state_machine_.state()),
-                errorName(runtime_state_machine_.error()));
+                "%s",
+                buildRuntimeLogLine(
+                    "INFO",
+                    "state_transition",
+                    runtime_state_machine_.state(),
+                    runtime_state_machine_.error(),
+                    latestWorstLatencyMs(),
+                    0.0,
+                    message)
+                    .c_str());
         }
         return RuntimeTransition{
             current,
@@ -208,16 +240,22 @@ private:
         std::shared_ptr<ApplyRuntimeEvent::Response> response) {
         const auto event = parseRuntimeEvent(request->event);
         if (!event.has_value()) {
+            const auto callback_started = now();
             response->accepted = false;
             response->transitioned = false;
             response->previous_state = stateName(currentRuntimeState());
             response->current_state = response->previous_state;
             response->runtime_error = errorName(currentRuntimeError());
             response->message = "unknown runtime event: " + request->event;
-            RCLCPP_WARN(get_logger(), "%s", response->message.c_str());
+            logRuntimeWarn(
+                "service_call",
+                response->message,
+                elapsedMs(callback_started),
+                0.0);
             return;
         }
 
+        const auto callback_started = now();
         const auto result = processRuntimeEvent(*event);
         const auto info = errorInfo(result.runtime_error);
         response->accepted = true;
@@ -234,55 +272,69 @@ private:
             "; recoverable=" + std::to_string(static_cast<int>(info.recoverable)) +
             "; reason=" + info.reason +
             "; recovery_hint=" + info.recovery_hint;
-        RCLCPP_INFO(
-            get_logger(),
-            "apply_event event=%s accepted=1 transitioned=%d previous=%s current=%s error=%s",
-            request->event.c_str(),
-            static_cast<int>(response->transitioned),
-            response->previous_state.c_str(),
-            response->current_state.c_str(),
-            response->runtime_error.c_str());
+        logRuntimeInfo(
+            "service_call",
+            "apply_event event=" + request->event +
+                " accepted=1 transitioned=" + std::to_string(static_cast<int>(response->transitioned)) +
+                " previous=" + response->previous_state +
+                " current=" + response->current_state +
+                " error=" + response->runtime_error,
+            elapsedMs(callback_started),
+            0.0);
     }
 
     rclcpp_action::GoalResponse handleGoal(
         const std::shared_ptr<const ExecuteTask::Goal> goal) {
         updateRuntimeState();
         if (goal->target_steps <= 0) {
-            RCLCPP_WARN(
-                get_logger(),
-                "rejecting execute_task goal: target_steps=%d must be positive",
-                goal->target_steps);
+            logRuntimeWarn(
+                "action_goal",
+                "rejecting execute_task goal: target_steps=" +
+                    std::to_string(goal->target_steps) + " must be positive",
+                0.0,
+                0.0);
             return rclcpp_action::GoalResponse::REJECT;
         }
 
         const auto runtime_state = currentRuntimeState();
         if (runtime_state != RuntimeState::Standby) {
-            RCLCPP_WARN(
-                get_logger(),
-                "rejecting execute_task goal: runtime_state=%s is not STANDBY",
-                stateName(runtime_state));
+            logRuntimeWarn(
+                "action_goal",
+                std::string("rejecting execute_task goal: runtime_state=") +
+                    stateName(runtime_state) + " is not STANDBY",
+                0.0,
+                0.0);
             return rclcpp_action::GoalResponse::REJECT;
         }
 
         bool expected = false;
         if (!task_active_.compare_exchange_strong(expected, true)) {
-            RCLCPP_WARN(get_logger(), "rejecting execute_task goal: another task is active");
+            logRuntimeWarn(
+                "action_goal",
+                "rejecting execute_task goal: another task is active",
+                0.0,
+                0.0);
             return rclcpp_action::GoalResponse::REJECT;
         }
 
         task_state_.store(TaskState::RUNNING);
         task_current_step_.store(0);
         processRuntimeEvent(RuntimeEvent::StartTask);
-        RCLCPP_INFO(
-            get_logger(),
-            "accepted execute_task goal target_steps=%d",
-            goal->target_steps);
+        logRuntimeInfo(
+            "action_goal",
+            "accepted execute_task goal target_steps=" + std::to_string(goal->target_steps),
+            0.0,
+            0.0);
         return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
     }
 
     rclcpp_action::CancelResponse handleCancel(
         const std::shared_ptr<GoalHandleExecuteTask>) {
-        RCLCPP_INFO(get_logger(), "received execute_task cancel request");
+        logRuntimeInfo(
+            "action_cancel",
+            "received execute_task cancel request",
+            0.0,
+            0.0);
         return rclcpp_action::CancelResponse::ACCEPT;
     }
 
@@ -310,7 +362,11 @@ private:
                 goal_handle->canceled(result);
                 task_active_.store(false);
                 processRuntimeEvent(RuntimeEvent::TaskCanceled);
-                RCLCPP_WARN(get_logger(), "%s", result->message.c_str());
+                logRuntimeWarn(
+                    "action_result",
+                    result->message,
+                    static_cast<double>(step - 1) * 200.0,
+                    0.0);
                 return;
             }
 
@@ -321,6 +377,11 @@ private:
                 goal_handle->abort(result);
                 task_active_.store(false);
                 processRuntimeEvent(RuntimeEvent::TaskFailed);
+                logRuntimeWarn(
+                    "action_result",
+                    result->message,
+                    static_cast<double>(step - 1) * 200.0,
+                    0.0);
                 return;
             }
 
@@ -330,12 +391,13 @@ private:
             feedback->progress =
                 static_cast<float>(step) / static_cast<float>(goal->target_steps);
             goal_handle->publish_feedback(feedback);
-            RCLCPP_INFO(
-                get_logger(),
-                "execute_task feedback step=%d/%d progress=%.2f",
-                step,
-                goal->target_steps,
-                feedback->progress);
+            logRuntimeInfo(
+                "action_feedback",
+                "execute_task feedback step=" + std::to_string(step) +
+                    "/" + std::to_string(goal->target_steps) +
+                    " progress=" + std::to_string(feedback->progress),
+                200.0,
+                0.0);
         }
 
         task_state_.store(TaskState::COMPLETED);
@@ -344,7 +406,89 @@ private:
         goal_handle->succeed(result);
         task_active_.store(false);
         processRuntimeEvent(RuntimeEvent::TaskSucceeded);
-        RCLCPP_INFO(get_logger(), "execute_task completed");
+        logRuntimeInfo(
+            "action_result",
+            "execute_task completed",
+            static_cast<double>(goal->target_steps) * 200.0,
+            0.0);
+    }
+
+    std::string buildRuntimeLogLine(
+        const std::string& level,
+        const std::string& event,
+        RuntimeState runtime_state,
+        RuntimeError runtime_error,
+        double latency_ms,
+        double duration_ms,
+        const std::string& message) {
+        const auto info = errorInfo(runtime_error);
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2)
+            << "[runtime_log]"
+            << " ts=" << now().nanoseconds() / 1000000
+            << " node=" << get_name()
+            << " level=" << level
+            << " event=" << event
+            << " state=" << stateName(runtime_state)
+            << " runtime_error=" << errorName(runtime_error)
+            << " severity=" << severityName(info.severity)
+            << " recoverable=" << static_cast<int>(info.recoverable)
+            << " latency_ms=" << latency_ms
+            << " duration_ms=" << duration_ms
+            << " message=\"" << message << "\"";
+        return oss.str();
+    }
+
+    void logRuntimeInfo(
+        const std::string& event,
+        const std::string& message,
+        double duration_ms,
+        double latency_ms) {
+        RuntimeState runtime_state;
+        RuntimeError runtime_error;
+        {
+            std::lock_guard<std::mutex> lock(runtime_state_mutex_);
+            runtime_state = runtime_state_machine_.state();
+            runtime_error = runtime_state_machine_.error();
+        }
+        RCLCPP_INFO(
+            get_logger(),
+            "%s",
+            buildRuntimeLogLine(
+                "INFO",
+                event,
+                runtime_state,
+                runtime_error,
+                latency_ms,
+                duration_ms,
+                message)
+                .c_str());
+    }
+
+    void logRuntimeWarn(
+        const std::string& event,
+        const std::string& message,
+        double duration_ms,
+        double latency_ms) {
+        RuntimeState runtime_state;
+        RuntimeError runtime_error;
+        {
+            std::lock_guard<std::mutex> lock(runtime_state_mutex_);
+            runtime_state = runtime_state_machine_.state();
+            runtime_error = runtime_state_machine_.error();
+        }
+        RCLCPP_WARN(
+            get_logger(),
+            "%s",
+            buildRuntimeLogLine(
+                "WARN",
+                event,
+                runtime_state,
+                runtime_error,
+                latency_ms,
+                duration_ms,
+                message)
+                .c_str());
     }
 
     static const char* taskStateName(TaskState state) {

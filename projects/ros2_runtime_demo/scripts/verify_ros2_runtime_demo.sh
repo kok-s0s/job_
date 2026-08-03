@@ -210,8 +210,22 @@ if ! grep -q "published sensors" "${OUTPUT_FILE}"; then
   exit 1
 fi
 
-if ! grep -q "runtime status state=" "${OUTPUT_FILE}"; then
+if ! grep -q "\[runtime_log\].*event=heartbeat.*message=\"runtime status state=" "${OUTPUT_FILE}"; then
   echo "runtime subscriber output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[runtime_log\].*node=runtime_node.*level=INFO.*event=heartbeat.*state=.*runtime_error=.*severity=.*recoverable=.*latency_ms=.*duration_ms=.*message=" "${OUTPUT_FILE}" ||
+  ! grep -q "\[runtime_log\].*event=state_transition.*runtime transition" "${OUTPUT_FILE}" ||
+  ! grep -q "\[runtime_log\].*event=service_call.*query_status" "${OUTPUT_FILE}" ||
+  ! grep -q "\[runtime_log\].*event=action_feedback.*execute_task feedback" "${OUTPUT_FILE}"; then
+  echo "structured runtime_log fields were not observed" >&2
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
   rm -f "${JOINT_OUTPUT_FILE}"
@@ -460,4 +474,4 @@ rm -f "${ACTION_REJECT_OUTPUT_FILE}"
 rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, week 3 review, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+echo "[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"

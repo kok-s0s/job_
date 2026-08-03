@@ -11,6 +11,7 @@
 - [2026-07-29：ROS2 状态机事件接入 Service](/roadmap/daily/2026-07-29)
 - [2026-07-30：错误码语义化与故障恢复策略](/roadmap/daily/2026-07-30)
 - [2026-07-31：状态机面试讲稿与第 3 周验收](/roadmap/daily/2026-07-31)
+- [2026-08-03：统一运行时日志字段设计](/roadmap/daily/2026-08-03)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -188,7 +189,7 @@ colcon=/usr/bin/colcon
 ```txt
 [ok] runtime state machine transitions verified
 [ok] week 3 runtime state machine review ready
-[ok] ROS2 runtime demo verified: state machine demo, week 3 review, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
+[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
 ```
 
 本次实测频率：
@@ -255,6 +256,14 @@ colcon=/usr/bin/colcon
 - 面试表达重点从“写了状态机”提升为“设计了一个可观测、可恢复、可测试的机器人运行时骨架”。
 - 新增 `runtime_state_machine_review`，可通过 `ros2 run robot_runtime_demo runtime_state_machine_review` 输出状态转换表、错误语义和面试要点。
 - 最终验收入口是 `bash scripts/verify_ros2_runtime_demo.sh`，覆盖构建、状态机 demo、周复盘程序、Topic、Service、Action、故障语义和恢复链。
+
+2026-08-03 练习重点：
+
+- 第 4 周进入日志、心跳与监控主题，今天先设计统一运行时日志字段。
+- 推荐字段包括 `timestamp_ms`、`node`、`level`、`event`、`state`、`runtime_error`、`severity`、`recoverable`、`latency_ms`、`duration_ms` 和 `message`。
+- 这些字段后续会服务于 heartbeat、watchdog、耗时统计、自动验收脚本和监控 UI。
+- 已在 `runtime_node.cpp` 落地 `[runtime_log]` 统一 key-value 输出，覆盖 heartbeat、状态切换、Service 调用、Action goal/cancel/feedback/result 和 Topic 回调。
+- `verify_ros2_runtime_demo.sh` 已检查结构化日志字段，确认 `node=runtime_node`、`event=heartbeat`、`event=state_transition`、`event=service_call` 和 `event=action_feedback` 稳定出现。
 
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
