@@ -18,6 +18,7 @@
 #include "runtime_state_machine.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "std_srvs/srv/trigger.hpp"
 
 using namespace std::chrono_literals;
@@ -30,6 +31,8 @@ public:
 
     RuntimeNode()
         : Node("runtime_node") {
+        heartbeat_pub_ = create_publisher<std_msgs::msg::String>("/runtime/heartbeat", 10);
+
         imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
             "/robot/imu",
             10,
@@ -140,6 +143,7 @@ public:
                 "runtime status " + buildStatusSummary(),
                 elapsedMs(callback_started),
                 latestWorstLatencyMs());
+            publishHeartbeat();
         });
     }
 
@@ -439,6 +443,38 @@ private:
         return oss.str();
     }
 
+    std::string buildHeartbeatPayload() {
+        RuntimeState runtime_state;
+        RuntimeError runtime_error;
+        {
+            std::lock_guard<std::mutex> lock(runtime_state_mutex_);
+            runtime_state = runtime_state_machine_.state();
+            runtime_error = runtime_state_machine_.error();
+        }
+        const auto info = errorInfo(runtime_error);
+        const std::string status =
+            runtime_state == RuntimeState::Fault ? "FAULT" : "OK";
+
+        std::ostringstream payload;
+        payload << "node=runtime_node"
+                << " seq=" << ++heartbeat_sequence_
+                << " stamp_ms=" << now().nanoseconds() / 1000000
+                << " state=" << stateName(runtime_state)
+                << " runtime_error=" << errorName(runtime_error)
+                << " severity=" << severityName(info.severity)
+                << " recoverable=" << static_cast<int>(info.recoverable)
+                << " status=" << status
+                << " message=\"runtime heartbeat\"";
+        return payload.str();
+    }
+
+    void publishHeartbeat() {
+        std_msgs::msg::String heartbeat;
+        heartbeat.data = buildHeartbeatPayload();
+        heartbeat_pub_->publish(heartbeat);
+        RCLCPP_INFO(get_logger(), "[heartbeat] %s", heartbeat.data.c_str());
+    }
+
     void logRuntimeInfo(
         const std::string& event,
         const std::string& message,
@@ -580,6 +616,7 @@ private:
 
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_sub_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr heartbeat_pub_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr reset_service_;
     rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr query_status_service_;
     rclcpp::Service<ApplyRuntimeEvent>::SharedPtr apply_event_service_;
@@ -600,6 +637,7 @@ private:
     double latest_imu_latency_ms_ = 0.0;
     double latest_joint_latency_ms_ = 0.0;
     bool latest_joint_valid_ = false;
+    std::size_t heartbeat_sequence_ = 0;
 };
 
 int main(int argc, char** argv) {

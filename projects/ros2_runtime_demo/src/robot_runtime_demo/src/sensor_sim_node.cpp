@@ -2,10 +2,12 @@
 #include <cmath>
 #include <cstddef>
 #include <memory>
+#include <sstream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "std_msgs/msg/string.hpp"
 
 using namespace std::chrono_literals;
 
@@ -15,8 +17,12 @@ public:
         : Node("sensor_sim_node") {
         imu_pub_ = create_publisher<sensor_msgs::msg::Imu>("/robot/imu", 10);
         joint_pub_ = create_publisher<sensor_msgs::msg::JointState>("/robot/joint_states", 10);
+        heartbeat_pub_ = create_publisher<std_msgs::msg::String>("/runtime/heartbeat", 10);
         timer_ = create_wall_timer(100ms, [this] {
             publishSensors();
+        });
+        heartbeat_timer_ = create_wall_timer(1s, [this] {
+            publishHeartbeat();
         });
     }
 
@@ -61,10 +67,26 @@ private:
             joints.position.front());
     }
 
+    void publishHeartbeat() {
+        std_msgs::msg::String heartbeat;
+        std::ostringstream payload;
+        payload << "node=sensor_sim_node"
+                << " seq=" << ++heartbeat_sequence_
+                << " stamp_ms=" << now().nanoseconds() / 1000000
+                << " status=OK"
+                << " message=\"sensor publisher alive\"";
+        heartbeat.data = payload.str();
+        heartbeat_pub_->publish(heartbeat);
+        RCLCPP_INFO(get_logger(), "[heartbeat] %s", heartbeat.data.c_str());
+    }
+
     rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub_;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_pub_;
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr heartbeat_pub_;
     rclcpp::TimerBase::SharedPtr timer_;
+    rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     std::size_t sequence_ = 0;
+    std::size_t heartbeat_sequence_ = 0;
 };
 
 int main(int argc, char** argv) {

@@ -12,6 +12,7 @@
 - [2026-07-30：错误码语义化与故障恢复策略](/roadmap/daily/2026-07-30)
 - [2026-07-31：状态机面试讲稿与第 3 周验收](/roadmap/daily/2026-07-31)
 - [2026-08-03：统一运行时日志字段设计](/roadmap/daily/2026-08-03)
+- [2026-08-04：ROS2 心跳发布与订阅设计](/roadmap/daily/2026-08-04)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -35,6 +36,7 @@ robot_runtime_demo/
 │   └── ApplyRuntimeEvent.srv
 └── src/
     ├── action_cancel_test_client.cpp
+    ├── heartbeat_monitor_node.cpp
     ├── runtime_node.cpp
     ├── runtime_state_machine.hpp
     ├── runtime_state_machine_demo.cpp
@@ -47,7 +49,10 @@ robot_runtime_demo/
 场景：一个机器人运行时系统需要接收底层传感器状态，并根据状态维护自己的运行状态。
 
 - `sensor_sim_node`：模拟底层传感器/驱动层，10Hz 发布 `/robot/imu` 和 `/robot/joint_states`。
+- `sensor_sim_node` 同时每秒向 `/runtime/heartbeat` 发布自身心跳。
 - `runtime_node`：模拟机器人运行时/监控层，订阅 `/robot/imu` 和 `/robot/joint_states`，记录接收计数、消息延迟、最近更新时间和 JointState 数据形状。
+- `runtime_node` 同时每秒向 `/runtime/heartbeat` 发布带状态机字段的心跳。
+- `heartbeat_monitor_node`：订阅 `/runtime/heartbeat`，维护每个节点的 `last_seq`、`last_stamp_ms`、`age_ms` 和 `status`。
 - `/runtime/reset_fault`：一个 `std_srvs/srv/Trigger` 服务，用来模拟“清故障/复位”命令。
 - `/runtime/query_status`：一个 `std_srvs/srv/Trigger` 服务，用来主动查询 runtime 当前状态、接收计数、延迟和 JointState 合法性。
 - `/runtime/query_status` 也会返回错误严重级别、是否可恢复、故障原因和恢复建议，方便脚本或 UI 直接展示。
@@ -99,6 +104,8 @@ bash scripts/verify_ros2_runtime_demo.sh
 ```txt
 [ok] runtime state machine transitions verified
 [ok] week 3 runtime state machine review ready
+[heartbeat_table] node=sensor_sim_node last_seq=... last_stamp_ms=... age_ms=... status=OK
+[heartbeat_table] node=runtime_node last_seq=... last_stamp_ms=... age_ms=... status=OK
 [sensor_sim_node]: published sensors seq=... imu_ax=... imu_az=9.8 joint_1=...
 [runtime_node]: runtime status state=STANDBY runtime_error=NONE runtime_severity=INFO runtime_recoverable=1 runtime_reason=runtime healthy runtime_recovery_hint=no action required imu_count=... joint_count=...
 average rate: 9....
@@ -118,7 +125,8 @@ cancel_result ... success=0 message="task canceled at step ..." feedback_count=.
 - `source install/setup.bash` 后限时运行 `ros2 launch robot_runtime_demo runtime_demo.launch.py`。
 - 运行 `ros2 run robot_runtime_demo runtime_state_machine_demo`，验证纯 C++ 状态机转换表。
 - 运行 `ros2 run robot_runtime_demo runtime_state_machine_review`，输出第 3 周状态机复盘表和面试要点。
-- 检查 `/robot/imu` 和 `/robot/joint_states` 各能 echo 一条 typed message。
+- 检查 `/robot/imu`、`/robot/joint_states` 和 `/runtime/heartbeat` 各能 echo 一条 typed message。
+- 检查 `sensor_sim_node`、`runtime_node`、`heartbeat_monitor_node` 的心跳发布、订阅和监控表输出。
 - 检查 `/robot/imu` 和 `/robot/joint_states` 能输出 topic 频率。
 - 调用 `/runtime/reset_fault` service。
 - 检查 `/runtime/query_status` service 是否存在、类型是否为 `std_srvs/srv/Trigger`，以及响应中是否包含 runtime 状态摘要和错误语义。
@@ -189,7 +197,7 @@ colcon=/usr/bin/colcon
 ```txt
 [ok] runtime state machine transitions verified
 [ok] week 3 runtime state machine review ready
-[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
+[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, heartbeat pub/sub, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
 ```
 
 本次实测频率：
@@ -265,12 +273,22 @@ colcon=/usr/bin/colcon
 - 已在 `runtime_node.cpp` 落地 `[runtime_log]` 统一 key-value 输出，覆盖 heartbeat、状态切换、Service 调用、Action goal/cancel/feedback/result 和 Topic 回调。
 - `verify_ros2_runtime_demo.sh` 已检查结构化日志字段，确认 `node=runtime_node`、`event=heartbeat`、`event=state_transition`、`event=service_call` 和 `event=action_feedback` 稳定出现。
 
+2026-08-04 练习重点：
+
+- 第 4 周周二开始设计 ROS2 心跳发布与订阅，为 watchdog 监控节点做铺垫。
+- 心跳建议通过 `/runtime/heartbeat` Topic 发布，先用 `std_msgs/msg/String` 承载 key-value 字段，后续可升级为自定义 msg。
+- 推荐心跳字段包括 `node`、`seq`、`stamp_ms`、`state`、`runtime_error`、`severity`、`recoverable`、`status` 和 `message`。
+- 已在 ROS2 demo 中落地 `/runtime/heartbeat` Topic：`sensor_sim_node`、`runtime_node`、`heartbeat_monitor_node` 每秒发布心跳，`heartbeat_monitor_node` 订阅并维护每个节点的 `last_stamp_ms` 和 `age_ms`。
+- `verify_ros2_runtime_demo.sh` 已检查 3 个节点的 `[heartbeat]`、`[heartbeat_rx]`、`[heartbeat_table]` 输出。
+- 明天 watchdog 的核心规则是：超过 3 秒未收到指定节点心跳，则标记 `TIMEOUT`，再触发 Fault 或报警。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
 
 - `package.xml` 声明 package 元信息，以及 Topic、Service、Action 与接口生成依赖。
 - `CMakeLists.txt` 生成 `ExecuteTask` 接口，编译 runtime、传感器节点与 Action 取消测试客户端。
+- `heartbeat_monitor_node.cpp` 展示如何订阅 `/runtime/heartbeat` 并维护节点心跳表，为 watchdog 做准备。
 - `srv/ApplyRuntimeEvent.srv` 展示如何定义一个可复盘的状态机事件入口。
 - `sensor_sim_node.cpp` 展示 typed Topic publisher，模拟 IMU 和关节状态持续输出数据。
 - `runtime_state_machine.hpp` 展示纯 C++ 运行时状态机，便于脱离 ROS2 做快速验证和复盘。

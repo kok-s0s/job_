@@ -80,6 +80,10 @@ echo "[topic] /robot/joint_states --once"
 JOINT_OUTPUT_FILE=$(mktemp)
 timeout 5s ros2 topic echo /robot/joint_states --once >"${JOINT_OUTPUT_FILE}" 2>&1
 
+echo "[topic] /runtime/heartbeat --once"
+HEARTBEAT_OUTPUT_FILE=$(mktemp)
+timeout 5s ros2 topic echo /runtime/heartbeat --once >"${HEARTBEAT_OUTPUT_FILE}" 2>&1
+
 echo "[hz] /robot/imu"
 IMU_HZ_OUTPUT_FILE=$(mktemp)
 timeout 8s ros2 topic hz /robot/imu >"${IMU_HZ_OUTPUT_FILE}" 2>&1 || true
@@ -162,6 +166,7 @@ trap - EXIT
 cat "${OUTPUT_FILE}"
 cat "${IMU_OUTPUT_FILE}"
 cat "${JOINT_OUTPUT_FILE}"
+cat "${HEARTBEAT_OUTPUT_FILE}"
 cat "${IMU_HZ_OUTPUT_FILE}"
 cat "${JOINT_HZ_OUTPUT_FILE}"
 cat "${SERVICE_OUTPUT_FILE}"
@@ -251,6 +256,36 @@ if ! grep -q "linear_acceleration" "${IMU_OUTPUT_FILE}"; then
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
   rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "node=.*seq=.*stamp_ms=.*status=.*message=" "${HEARTBEAT_OUTPUT_FILE}"; then
+  echo "/runtime/heartbeat output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${HEARTBEAT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[heartbeat\] node=sensor_sim_node" "${OUTPUT_FILE}" ||
+  ! grep -q "\[heartbeat\] node=runtime_node" "${OUTPUT_FILE}" ||
+  ! grep -q "\[heartbeat\] node=heartbeat_monitor_node" "${OUTPUT_FILE}" ||
+  ! grep -q "\[heartbeat_rx\] node=runtime_node" "${OUTPUT_FILE}" ||
+  ! grep -q "\[heartbeat_table\] node=sensor_sim_node" "${OUTPUT_FILE}" ||
+  ! grep -q "\[heartbeat_table\] node=runtime_node" "${OUTPUT_FILE}" ||
+  ! grep -q "\[heartbeat_table\] node=heartbeat_monitor_node" "${OUTPUT_FILE}"; then
+  echo "heartbeat publisher/subscriber output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${HEARTBEAT_OUTPUT_FILE}"
   rm -f "${IMU_HZ_OUTPUT_FILE}"
   rm -f "${JOINT_HZ_OUTPUT_FILE}"
   rm -f "${SERVICE_OUTPUT_FILE}"
@@ -453,6 +488,7 @@ fi
 rm -f "${OUTPUT_FILE}"
 rm -f "${IMU_OUTPUT_FILE}"
 rm -f "${JOINT_OUTPUT_FILE}"
+rm -f "${HEARTBEAT_OUTPUT_FILE}"
 rm -f "${IMU_HZ_OUTPUT_FILE}"
 rm -f "${JOINT_HZ_OUTPUT_FILE}"
 rm -f "${SERVICE_OUTPUT_FILE}"
@@ -474,4 +510,4 @@ rm -f "${ACTION_REJECT_OUTPUT_FILE}"
 rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+echo "[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, heartbeat pub/sub, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
