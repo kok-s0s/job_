@@ -13,6 +13,7 @@
 - [2026-07-31：状态机面试讲稿与第 3 周验收](/roadmap/daily/2026-07-31)
 - [2026-08-03：统一运行时日志字段设计](/roadmap/daily/2026-08-03)
 - [2026-08-04：ROS2 心跳发布与订阅设计](/roadmap/daily/2026-08-04)
+- [2026-08-05：Watchdog 监控节点与超时 Fault](/roadmap/daily/2026-08-05)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -42,6 +43,7 @@ robot_runtime_demo/
     ├── runtime_state_machine_demo.cpp
     ├── runtime_state_machine_review.cpp
     ├── sensor_sim_node.cpp
+    ├── watchdog_node.cpp
 ```
 
 ## 这个 demo 在模拟什么
@@ -53,6 +55,7 @@ robot_runtime_demo/
 - `runtime_node`：模拟机器人运行时/监控层，订阅 `/robot/imu` 和 `/robot/joint_states`，记录接收计数、消息延迟、最近更新时间和 JointState 数据形状。
 - `runtime_node` 同时每秒向 `/runtime/heartbeat` 发布带状态机字段的心跳。
 - `heartbeat_monitor_node`：订阅 `/runtime/heartbeat`，维护每个节点的 `last_seq`、`last_stamp_ms`、`age_ms` 和 `status`。
+- `watchdog_node`：订阅 `/runtime/heartbeat`，维护每个节点最后一次心跳时间，每 1 秒检查一次。若某节点 3 秒无心跳则判定 TIMEOUT，并通过 `/runtime/apply_event` Service 发送 `SensorTimeout` 事件，让 `runtime_node` 进入 Fault。带启动宽限期，避免冷启动误报。
 - `/runtime/reset_fault`：一个 `std_srvs/srv/Trigger` 服务，用来模拟“清故障/复位”命令。
 - `/runtime/query_status`：一个 `std_srvs/srv/Trigger` 服务，用来主动查询 runtime 当前状态、接收计数、延迟和 JointState 合法性。
 - `/runtime/query_status` 也会返回错误严重级别、是否可恢复、故障原因和恢复建议，方便脚本或 UI 直接展示。
@@ -62,7 +65,26 @@ robot_runtime_demo/
 - `runtime_state_machine.hpp`：纯 C++ 状态机核心，负责 `IDLE/STANDBY/RUNNING/FAULT/RECOVERY` 的转换和错误码维护。
 - `runtime_state_machine_demo`：脱离 ROS2 通信的最小状态机验收程序，覆盖正常、故障、恢复和无效事件路径。
 - `runtime_state_machine_review`：第 3 周复盘可执行程序，输出状态转换表、错误语义和面试要点。
-- `runtime_demo.launch.py`：一次启动两个节点，演示 ROS2 多进程节点协作。
+- `runtime_demo.launch.py`：一次启动 `sensor_sim_node`、`runtime_node`、`heartbeat_monitor_node` 和 `watchdog_node` 四个节点，演示 ROS2 多进程节点协作。
+
+## watchdog 验证结果（WSL2 / ROS2 Jazzy）
+
+**正常心跳**：3 个节点均判定 `status=OK`，`age_ms` 稳定在 ~990ms，`last_seq` 递增正常。
+
+```txt
+[watchdog] node=heartbeat_monitor_node status=OK age_ms=995 last_seq=1
+[watchdog] node=runtime_node status=OK age_ms=962 last_seq=1
+[watchdog] node=sensor_sim_node status=OK age_ms=990 last_seq=1
+```
+
+**超时 Fault**：杀掉 `sensor_sim_node` 后，其 `age_ms` 递增超过 3000ms 阈值判定 `TIMEOUT`，并成功触发 Fault：
+
+```txt
+[WARN] [watchdog] node=sensor_sim_node status=TIMEOUT age_ms=3990 last_seq=3
+[WARN] [watchdog] fault triggered accepted=1 transitioned=0 current_state=FAULT error=SENSOR_TIMEOUT
+```
+
+`transitioned=0` 是因为 `runtime_node` 自己也检测到传感器超时已先进入 FAULT，watchdog 触发是冗余安全兜底。可复现脚本：`scripts/test_watchdog_timeout.sh`。
 
 这就是 ROS2 最常见的使用方式：把机器人系统拆成多个 node，用 Topic 传连续数据，用 Service 做一次性请求/响应，用 Action 管理可反馈、可取消的长耗时任务，用 launch 管理启动。
 

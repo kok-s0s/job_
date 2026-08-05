@@ -22,4 +22,10 @@ def generate_launch_description():
             name='heartbeat_monitor_node',
             output='screen',
         ),
+        Node(
+            package='robot_runtime_demo',
+            executable='watchdog_node',
+            name='watchdog_node',
+            output='screen',
+        ),
     ])

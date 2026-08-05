@@ -32,6 +32,10 @@ ament_target_dependencies(sensor_sim_node rclcpp sensor_msgs std_msgs)
 add_executable(heartbeat_monitor_node src/heartbeat_monitor_node.cpp)
 ament_target_dependencies(heartbeat_monitor_node rclcpp std_msgs)
 
+add_executable(watchdog_node src/watchdog_node.cpp)
+ament_target_dependencies(watchdog_node rclcpp std_msgs)
+target_link_libraries(watchdog_node "${cpp_typesupport_target}")
+
 add_executable(action_cancel_test_client src/action_cancel_test_client.cpp)
 ament_target_dependencies(action_cancel_test_client action_msgs rclcpp rclcpp_action)
 target_link_libraries(action_cancel_test_client "${cpp_typesupport_target}")
@@ -42,6 +46,7 @@ add_executable(runtime_state_machine_review src/runtime_state_machine_review.cpp
 target_compile_features(runtime_node PRIVATE cxx_std_17)
 target_compile_features(sensor_sim_node PRIVATE cxx_std_17)
 target_compile_features(heartbeat_monitor_node PRIVATE cxx_std_17)
+target_compile_features(watchdog_node PRIVATE cxx_std_17)
 target_compile_features(action_cancel_test_client PRIVATE cxx_std_17)
 target_compile_features(runtime_state_machine_demo PRIVATE cxx_std_17)
 target_compile_features(runtime_state_machine_review PRIVATE cxx_std_17)
@@ -50,6 +55,7 @@ install(TARGETS
   runtime_node
   sensor_sim_node
   heartbeat_monitor_node
+  watchdog_node
   action_cancel_test_client
   runtime_state_machine_demo
   runtime_state_machine_review
