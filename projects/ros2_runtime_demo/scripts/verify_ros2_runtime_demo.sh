@@ -245,6 +245,17 @@ if ! grep -q "\[runtime_log\].*node=runtime_node.*level=INFO.*event=heartbeat.*s
   exit 1
 fi
 
+if ! grep -q "\[perf\] node=runtime_node.*imu_latency_ms=.*joint_latency_ms=.*max_callback_duration_ms=.*heartbeat_duration_ms=.*last_action_duration_ms=.*task_step=" "${OUTPUT_FILE}"; then
+  echo "runtime performance summary output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
 if ! grep -q "imu_latency_ms=.*joint_latency_ms=.*joint_valid=1" "${OUTPUT_FILE}"; then
   echo "runtime subscriber health output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
@@ -398,7 +409,7 @@ if ! grep -q "success=True" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_error=NONE" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_severity=INFO" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_recoverable=1" "${QUERY_SERVICE_OUTPUT_FILE}" ||
-  ! grep -q "imu_count=.*joint_count=.*imu_latency_ms=.*joint_latency_ms=.*joint_valid=1" "${QUERY_SERVICE_OUTPUT_FILE}"; then
+  ! grep -q "imu_count=.*joint_count=.*imu_latency_ms=.*joint_latency_ms=.*joint_valid=1.*max_callback_duration_ms=.*last_action_duration_ms=" "${QUERY_SERVICE_OUTPUT_FILE}"; then
   echo "query_status service response did not include the expected runtime summary" >&2
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
@@ -530,4 +541,4 @@ rm -f "${ACTION_REJECT_OUTPUT_FILE}"
 rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+echo "[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"

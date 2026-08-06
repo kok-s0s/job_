@@ -14,6 +14,7 @@
 - [2026-08-03：统一运行时日志字段设计](/roadmap/daily/2026-08-03)
 - [2026-08-04：ROS2 心跳发布与订阅设计](/roadmap/daily/2026-08-04)
 - [2026-08-05：Watchdog 监控节点与超时 Fault](/roadmap/daily/2026-08-05)
+- [2026-08-06：记录关键耗时与性能观测](/roadmap/daily/2026-08-06)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -219,7 +220,7 @@ colcon=/usr/bin/colcon
 ```txt
 [ok] runtime state machine transitions verified
 [ok] week 3 runtime state machine review ready
-[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, heartbeat pub/sub, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
+[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
 ```
 
 本次实测频率：
@@ -304,6 +305,16 @@ colcon=/usr/bin/colcon
 - `verify_ros2_runtime_demo.sh` 已检查 3 个节点的 `[heartbeat]`、`[heartbeat_rx]`、`[heartbeat_table]` 输出。
 - 明天 watchdog 的核心规则是：超过 3 秒未收到指定节点心跳，则标记 `TIMEOUT`，再触发 Fault 或报警。
 
+2026-08-06 练习重点：
+
+- 第 4 周周四整理关键耗时指标，为周五第 1 阶段集成验收做准备。
+- 当前 demo 已能观察 `latency_ms`、`duration_ms`、`imu_latency_ms`、`joint_latency_ms`、`age_ms` 和 `task_step`。
+- 排障时先区分链路延迟和本地处理耗时：`latency_ms` 是“路上花多久”，`duration_ms` 是“回调自己处理多久”。
+- `heartbeat_monitor_node` 和 `watchdog_node` 输出的 `age_ms` 用来判断心跳新鲜度，超过阈值时 watchdog 会进入 TIMEOUT 判断。
+- 已在 `runtime_node.cpp` 落地 `[perf]` 性能聚合输出，包含 `imu_latency_ms`、`joint_latency_ms`、`max_callback_duration_ms`、`heartbeat_duration_ms`、`last_action_duration_ms` 和 `task_step`。
+- `/runtime/query_status` 响应已包含 `max_callback_duration_ms` 和 `last_action_duration_ms`，验收脚本已检查这些字段。
+- 今日任务把这些指标整理成可复盘、可面试表达的性能观测清单，明天再做第 1 阶段集成验收。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -317,6 +328,7 @@ colcon=/usr/bin/colcon
 - `runtime_state_machine.hpp` 同时维护错误码语义，统一提供 severity、recoverable、reason 和 recovery_hint。
 - `runtime_state_machine_review.cpp` 展示如何把一周成果变成可运行、可检查的复盘输出。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。
+- `runtime_node.cpp` 同时输出 `[perf]` 性能聚合指标，用于区分通信延迟、回调耗时、Action 耗时和心跳新鲜度。
 - 构建后必须 `source install/setup.bash`，否则当前 shell 找不到新 package。
 - `scripts/verify_ros2_runtime_demo.sh` 是验收入口，用来补齐环境检查、状态机 demo、构建、launch 启动、Topic 发布/订阅检查。
 

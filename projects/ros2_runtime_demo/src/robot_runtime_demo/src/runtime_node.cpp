@@ -47,6 +47,7 @@ public:
                     "received imu frame=" + msg->header.frame_id,
                     elapsedMs(callback_started),
                     latest_imu_latency_ms_);
+                recordCallbackDuration(elapsedMs(callback_started));
             });
 
         joint_sub_ = create_subscription<sensor_msgs::msg::JointState>(
@@ -78,6 +79,7 @@ public:
                     "received joint_states",
                     elapsedMs(callback_started),
                     latest_joint_latency_ms_);
+                recordCallbackDuration(elapsedMs(callback_started));
             });
 
         reset_service_ = create_service<std_srvs::srv::Trigger>(
@@ -94,6 +96,7 @@ public:
                     "reset_fault accepted",
                     elapsedMs(callback_started),
                     0.0);
+                recordCallbackDuration(elapsedMs(callback_started));
             });
 
         query_status_service_ = create_service<std_srvs::srv::Trigger>(
@@ -110,6 +113,7 @@ public:
                     "query_status " + response->message,
                     elapsedMs(callback_started),
                     0.0);
+                recordCallbackDuration(elapsedMs(callback_started));
             });
 
         apply_event_service_ = create_service<ApplyRuntimeEvent>(
@@ -144,6 +148,8 @@ public:
                 elapsedMs(callback_started),
                 latestWorstLatencyMs());
             publishHeartbeat();
+            logPerformanceSummary(elapsedMs(callback_started));
+            recordCallbackDuration(elapsedMs(callback_started));
         });
     }
 
@@ -182,6 +188,11 @@ private:
 
     double latestWorstLatencyMs() const {
         return std::max(latest_imu_latency_ms_, latest_joint_latency_ms_);
+    }
+
+    void recordCallbackDuration(double duration_ms) {
+        std::lock_guard<std::mutex> lock(performance_mutex_);
+        max_callback_duration_ms_ = std::max(max_callback_duration_ms_, duration_ms);
     }
 
     void updateRuntimeState() {
@@ -256,6 +267,7 @@ private:
                 response->message,
                 elapsedMs(callback_started),
                 0.0);
+            recordCallbackDuration(elapsedMs(callback_started));
             return;
         }
 
@@ -285,6 +297,7 @@ private:
                 " error=" + response->runtime_error,
             elapsedMs(callback_started),
             0.0);
+        recordCallbackDuration(elapsedMs(callback_started));
     }
 
     rclcpp_action::GoalResponse handleGoal(
@@ -352,6 +365,7 @@ private:
     }
 
     void executeTask(const std::shared_ptr<GoalHandleExecuteTask> goal_handle) {
+        const auto task_started = now();
         const auto goal = goal_handle->get_goal();
         auto feedback = std::make_shared<ExecuteTask::Feedback>();
         auto result = std::make_shared<ExecuteTask::Result>();
@@ -366,10 +380,12 @@ private:
                 goal_handle->canceled(result);
                 task_active_.store(false);
                 processRuntimeEvent(RuntimeEvent::TaskCanceled);
+                const auto action_duration_ms = elapsedMs(task_started);
+                storeActionDuration(action_duration_ms);
                 logRuntimeWarn(
                     "action_result",
                     result->message,
-                    static_cast<double>(step - 1) * 200.0,
+                    action_duration_ms,
                     0.0);
                 return;
             }
@@ -381,10 +397,12 @@ private:
                 goal_handle->abort(result);
                 task_active_.store(false);
                 processRuntimeEvent(RuntimeEvent::TaskFailed);
+                const auto action_duration_ms = elapsedMs(task_started);
+                storeActionDuration(action_duration_ms);
                 logRuntimeWarn(
                     "action_result",
                     result->message,
-                    static_cast<double>(step - 1) * 200.0,
+                    action_duration_ms,
                     0.0);
                 return;
             }
@@ -410,11 +428,18 @@ private:
         goal_handle->succeed(result);
         task_active_.store(false);
         processRuntimeEvent(RuntimeEvent::TaskSucceeded);
+        const auto action_duration_ms = elapsedMs(task_started);
+        storeActionDuration(action_duration_ms);
         logRuntimeInfo(
             "action_result",
             "execute_task completed",
-            static_cast<double>(goal->target_steps) * 200.0,
+            action_duration_ms,
             0.0);
+    }
+
+    void storeActionDuration(double action_duration_ms) {
+        std::lock_guard<std::mutex> lock(performance_mutex_);
+        last_action_duration_ms_ = action_duration_ms;
     }
 
     std::string buildRuntimeLogLine(
@@ -473,6 +498,27 @@ private:
         heartbeat.data = buildHeartbeatPayload();
         heartbeat_pub_->publish(heartbeat);
         RCLCPP_INFO(get_logger(), "[heartbeat] %s", heartbeat.data.c_str());
+    }
+
+    void logPerformanceSummary(double heartbeat_duration_ms) {
+        double max_callback_duration_ms = 0.0;
+        double last_action_duration_ms = 0.0;
+        {
+            std::lock_guard<std::mutex> lock(performance_mutex_);
+            max_callback_duration_ms = max_callback_duration_ms_;
+            last_action_duration_ms = last_action_duration_ms_;
+        }
+        RCLCPP_INFO(
+            get_logger(),
+            "[perf] node=runtime_node imu_latency_ms=%.2f joint_latency_ms=%.2f "
+            "max_callback_duration_ms=%.2f heartbeat_duration_ms=%.2f "
+            "last_action_duration_ms=%.2f task_step=%d",
+            latest_imu_latency_ms_,
+            latest_joint_latency_ms_,
+            max_callback_duration_ms,
+            heartbeat_duration_ms,
+            last_action_duration_ms,
+            task_current_step_.load());
     }
 
     void logRuntimeInfo(
@@ -594,6 +640,14 @@ private:
         }
 
         const auto info = errorInfo(runtime_error);
+        double max_callback_duration_ms = 0.0;
+        double last_action_duration_ms = 0.0;
+        {
+            std::lock_guard<std::mutex> lock(performance_mutex_);
+            max_callback_duration_ms = max_callback_duration_ms_;
+            last_action_duration_ms = last_action_duration_ms_;
+        }
+
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(2)
             << "state=" << stateName(runtime_state)
@@ -610,7 +664,9 @@ private:
             << " joint_latency_ms=" << latest_joint_latency_ms_
             << " joint_valid=" << static_cast<int>(latest_joint_valid_)
             << " task_state=" << taskStateName(task_state_.load())
-            << " task_step=" << task_current_step_.load();
+            << " task_step=" << task_current_step_.load()
+            << " max_callback_duration_ms=" << max_callback_duration_ms
+            << " last_action_duration_ms=" << last_action_duration_ms;
         return oss.str();
     }
 
@@ -627,6 +683,7 @@ private:
     std::atomic<TaskState> task_state_{TaskState::IDLE};
     std::atomic<int32_t> task_current_step_{0};
     mutable std::mutex runtime_state_mutex_;
+    mutable std::mutex performance_mutex_;
     RuntimeStateMachine runtime_state_machine_;
     std::size_t imu_count_ = 0;
     std::size_t joint_count_ = 0;
@@ -638,6 +695,8 @@ private:
     double latest_joint_latency_ms_ = 0.0;
     bool latest_joint_valid_ = false;
     std::size_t heartbeat_sequence_ = 0;
+    double max_callback_duration_ms_ = 0.0;
+    double last_action_duration_ms_ = 0.0;
 };
 
 int main(int argc, char** argv) {
