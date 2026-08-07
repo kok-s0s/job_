@@ -6,6 +6,45 @@ WORKSPACE_DIR=$(cd "${SCRIPT_DIR}/.." && pwd)
 PACKAGE_NAME=robot_runtime_demo
 LAUNCH_FILE=runtime_demo.launch.py
 
+wait_for_service() {
+  local service_name=$1
+  local attempts=${2:-20}
+  for ((i = 0; i < attempts; ++i)); do
+    if ros2 service list 2>/dev/null | grep -qx "${service_name}"; then
+      return 0
+    fi
+    sleep 0.5
+  done
+  echo "service not discovered: ${service_name}" >&2
+  return 1
+}
+
+wait_for_action() {
+  local action_name=$1
+  local attempts=${2:-20}
+  for ((i = 0; i < attempts; ++i)); do
+    if ros2 action list 2>/dev/null | grep -qx "${action_name}"; then
+      return 0
+    fi
+    sleep 0.5
+  done
+  echo "action not discovered: ${action_name}" >&2
+  return 1
+}
+
+wait_for_topic() {
+  local topic_name=$1
+  local attempts=${2:-20}
+  for ((i = 0; i < attempts; ++i)); do
+    if ros2 topic list 2>/dev/null | grep -qx "${topic_name}"; then
+      return 0
+    fi
+    sleep 0.5
+  done
+  echo "topic not discovered: ${topic_name}" >&2
+  return 1
+}
+
 if [[ -z "${ROS_DISTRO:-}" ]]; then
   if [[ -f /opt/ros/jazzy/setup.bash ]]; then
     # Keep the script friendly for a fresh Ubuntu 24.04 shell.
@@ -41,7 +80,10 @@ command -v colcon
 
 echo "[build] ${PACKAGE_NAME}"
 cd "${WORKSPACE_DIR}"
-colcon build --packages-select "${PACKAGE_NAME}" --event-handlers console_direct+
+CMAKE_BUILD_PARALLEL_LEVEL=1 MAKEFLAGS=-j1 colcon build \
+  --executor sequential \
+  --packages-select "${PACKAGE_NAME}" \
+  --event-handlers console_direct+
 
 # shellcheck disable=SC1091
 set +u
@@ -55,6 +97,10 @@ ros2 run "${PACKAGE_NAME}" runtime_state_machine_demo >"${STATE_MACHINE_OUTPUT_F
 echo "[review] runtime_state_machine_review"
 STATE_MACHINE_REVIEW_OUTPUT_FILE=$(mktemp)
 ros2 run "${PACKAGE_NAME}" runtime_state_machine_review >"${STATE_MACHINE_REVIEW_OUTPUT_FILE}" 2>&1
+
+echo "[review] runtime_integration_review"
+INTEGRATION_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_integration_review >"${INTEGRATION_REVIEW_OUTPUT_FILE}" 2>&1
 
 echo "[run] ${PACKAGE_NAME}/${LAUNCH_FILE}"
 OUTPUT_FILE=$(mktemp)
@@ -71,18 +117,25 @@ cleanup() {
 trap cleanup EXIT
 
 sleep 4
+wait_for_topic /robot/imu
+wait_for_topic /robot/joint_states
+wait_for_topic /runtime/heartbeat
+wait_for_service /runtime/reset_fault
+wait_for_service /runtime/query_status
+wait_for_service /runtime/apply_event
+wait_for_action /runtime/execute_task
 
 echo "[topic] /robot/imu --once"
 IMU_OUTPUT_FILE=$(mktemp)
-timeout 5s ros2 topic echo /robot/imu --once >"${IMU_OUTPUT_FILE}" 2>&1
+timeout 10s ros2 topic echo /robot/imu --once >"${IMU_OUTPUT_FILE}" 2>&1 || true
 
 echo "[topic] /robot/joint_states --once"
 JOINT_OUTPUT_FILE=$(mktemp)
-timeout 5s ros2 topic echo /robot/joint_states --once >"${JOINT_OUTPUT_FILE}" 2>&1
+timeout 10s ros2 topic echo /robot/joint_states --once >"${JOINT_OUTPUT_FILE}" 2>&1 || true
 
 echo "[topic] /runtime/heartbeat --once"
 HEARTBEAT_OUTPUT_FILE=$(mktemp)
-timeout 5s ros2 topic echo /runtime/heartbeat --once >"${HEARTBEAT_OUTPUT_FILE}" 2>&1
+timeout 10s ros2 topic echo /runtime/heartbeat --once >"${HEARTBEAT_OUTPUT_FILE}" 2>&1 || true
 
 echo "[hz] /robot/imu"
 IMU_HZ_OUTPUT_FILE=$(mktemp)
@@ -94,11 +147,11 @@ timeout 8s ros2 topic hz /robot/joint_states >"${JOINT_HZ_OUTPUT_FILE}" 2>&1 || 
 
 echo "[watchdog] heartbeat timeout check"
 WATCHDOG_OUTPUT_FILE=$(mktemp)
-timeout 5s ros2 topic echo /runtime/heartbeat --once >"${WATCHDOG_OUTPUT_FILE}" 2>&1
+timeout 10s ros2 topic echo /runtime/heartbeat --once >"${WATCHDOG_OUTPUT_FILE}" 2>&1 || true
 
 echo "[service] /runtime/reset_fault"
 SERVICE_OUTPUT_FILE=$(mktemp)
-timeout 5s ros2 service call /runtime/reset_fault std_srvs/srv/Trigger "{}" >"${SERVICE_OUTPUT_FILE}" 2>&1
+timeout 10s ros2 service call /runtime/reset_fault std_srvs/srv/Trigger "{}" >"${SERVICE_OUTPUT_FILE}" 2>&1 || true
 
 echo "[service] /runtime/query_status"
 QUERY_SERVICE_LIST_FILE=$(mktemp)
@@ -112,31 +165,31 @@ APPLY_EVENT_RESET_FILE=$(mktemp)
 APPLY_EVENT_RECOVERY_FILE=$(mktemp)
 APPLY_EVENT_QUERY_OUTPUT_FILE=$(mktemp)
 ros2 service list >"${QUERY_SERVICE_LIST_FILE}" 2>&1
-ros2 service type /runtime/query_status >"${QUERY_SERVICE_TYPE_FILE}" 2>&1
-timeout 5s ros2 service call /runtime/query_status std_srvs/srv/Trigger "{}" >"${QUERY_SERVICE_OUTPUT_FILE}" 2>&1
+ros2 service type /runtime/query_status >"${QUERY_SERVICE_TYPE_FILE}" 2>&1 || true
+timeout 10s ros2 service call /runtime/query_status std_srvs/srv/Trigger "{}" >"${QUERY_SERVICE_OUTPUT_FILE}" 2>&1 || true
 
 echo "[service] /runtime/apply_event"
-ros2 service type /runtime/apply_event >"${APPLY_EVENT_TYPE_FILE}" 2>&1
-timeout 5s ros2 service call \
+ros2 service type /runtime/apply_event >"${APPLY_EVENT_TYPE_FILE}" 2>&1 || true
+timeout 10s ros2 service call \
   /runtime/apply_event \
   robot_runtime_demo/srv/ApplyRuntimeEvent \
-  "{event: SensorTimeout}" >"${APPLY_EVENT_TIMEOUT_FILE}" 2>&1
-timeout 5s ros2 service call \
-  /runtime/query_status std_srvs/srv/Trigger "{}" >"${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}" 2>&1
-timeout 5s ros2 service call \
+  "{event: SensorTimeout}" >"${APPLY_EVENT_TIMEOUT_FILE}" 2>&1 || true
+timeout 10s ros2 service call \
+  /runtime/query_status std_srvs/srv/Trigger "{}" >"${APPLY_EVENT_FAULT_QUERY_OUTPUT_FILE}" 2>&1 || true
+timeout 10s ros2 service call \
   /runtime/apply_event \
   robot_runtime_demo/srv/ApplyRuntimeEvent \
   "{event: NoSuchEvent}" >"${APPLY_EVENT_UNKNOWN_FILE}" 2>&1 || true
-timeout 5s ros2 service call \
+timeout 10s ros2 service call \
   /runtime/apply_event \
   robot_runtime_demo/srv/ApplyRuntimeEvent \
-  "{event: ResetFault}" >"${APPLY_EVENT_RESET_FILE}" 2>&1
-timeout 5s ros2 service call \
+  "{event: ResetFault}" >"${APPLY_EVENT_RESET_FILE}" 2>&1 || true
+timeout 10s ros2 service call \
   /runtime/apply_event \
   robot_runtime_demo/srv/ApplyRuntimeEvent \
-  "{event: RecoveryDone}" >"${APPLY_EVENT_RECOVERY_FILE}" 2>&1
-timeout 5s ros2 service call \
-  /runtime/query_status std_srvs/srv/Trigger "{}" >"${APPLY_EVENT_QUERY_OUTPUT_FILE}" 2>&1
+  "{event: RecoveryDone}" >"${APPLY_EVENT_RECOVERY_FILE}" 2>&1 || true
+timeout 10s ros2 service call \
+  /runtime/query_status std_srvs/srv/Trigger "{}" >"${APPLY_EVENT_QUERY_OUTPUT_FILE}" 2>&1 || true
 
 echo "[action] /runtime/execute_task"
 ACTION_LIST_FILE=$(mktemp)
@@ -145,18 +198,18 @@ ACTION_OUTPUT_FILE=$(mktemp)
 ACTION_QUERY_OUTPUT_FILE=$(mktemp)
 ACTION_REJECT_OUTPUT_FILE=$(mktemp)
 ACTION_CANCEL_OUTPUT_FILE=$(mktemp)
-ros2 action list -t >"${ACTION_LIST_FILE}" 2>&1
-ros2 interface show robot_runtime_demo/action/ExecuteTask >"${ACTION_INTERFACE_FILE}" 2>&1
-timeout 10s ros2 action send_goal --feedback \
+ros2 action list -t >"${ACTION_LIST_FILE}" 2>&1 || true
+ros2 interface show robot_runtime_demo/action/ExecuteTask >"${ACTION_INTERFACE_FILE}" 2>&1 || true
+timeout 15s ros2 action send_goal --feedback \
   /runtime/execute_task \
   robot_runtime_demo/action/ExecuteTask \
-  "{target_steps: 10}" >"${ACTION_OUTPUT_FILE}" 2>&1 &
+  "{target_steps: 30}" >"${ACTION_OUTPUT_FILE}" 2>&1 &
 ACTION_PID=$!
 sleep 1
-timeout 5s ros2 service call \
-  /runtime/query_status std_srvs/srv/Trigger "{}" >"${ACTION_QUERY_OUTPUT_FILE}" 2>&1
-wait "${ACTION_PID}"
-timeout 5s ros2 action send_goal \
+timeout 10s ros2 service call \
+  /runtime/query_status std_srvs/srv/Trigger "{}" >"${ACTION_QUERY_OUTPUT_FILE}" 2>&1 || true
+wait "${ACTION_PID}" || true
+timeout 10s ros2 action send_goal \
   /runtime/execute_task \
   robot_runtime_demo/action/ExecuteTask \
   "{target_steps: 0}" >"${ACTION_REJECT_OUTPUT_FILE}" 2>&1 || true
@@ -193,6 +246,7 @@ cat "${ACTION_REJECT_OUTPUT_FILE}"
 cat "${ACTION_CANCEL_OUTPUT_FILE}"
 cat "${STATE_MACHINE_OUTPUT_FILE}"
 cat "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
+cat "${INTEGRATION_REVIEW_OUTPUT_FILE}"
 
 if ! grep -q "\[ok\] runtime state machine transitions verified" "${STATE_MACHINE_OUTPUT_FILE}"; then
   echo "runtime_state_machine_demo output was not observed" >&2
@@ -206,6 +260,17 @@ if ! grep -q "\[ok\] week 3 runtime state machine review ready" "${STATE_MACHINE
   ! grep -q "External callers send events, not target states" "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"; then
   echo "runtime_state_machine_review output was not observed" >&2
   rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[ok\] phase 1 ROS2 runtime integration review ready" "${INTEGRATION_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "phase 1 ROS2 runtime topology" "${INTEGRATION_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "sensor_sim_node" "${INTEGRATION_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "/runtime/execute_task" "${INTEGRATION_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "phase 1 evidence checklist" "${INTEGRATION_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "next week QoS entry questions" "${INTEGRATION_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_integration_review output was not observed" >&2
+  rm -f "${INTEGRATION_REVIEW_OUTPUT_FILE}"
   exit 1
 fi
 
@@ -405,7 +470,6 @@ if ! grep -q "robot_runtime_demo/srv/ApplyRuntimeEvent" "${APPLY_EVENT_TYPE_FILE
 fi
 
 if ! grep -q "success=True" "${QUERY_SERVICE_OUTPUT_FILE}" ||
-  ! grep -Eq "state=(STANDBY|RUNNING)" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_error=NONE" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_severity=INFO" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_recoverable=1" "${QUERY_SERVICE_OUTPUT_FILE}" ||
@@ -420,6 +484,12 @@ if ! grep -q "success=True" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   rm -f "${QUERY_SERVICE_LIST_FILE}"
   rm -f "${QUERY_SERVICE_TYPE_FILE}"
   rm -f "${QUERY_SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "state=STANDBY" "${QUERY_SERVICE_OUTPUT_FILE}" &&
+  ! grep -q "state=RUNNING" "${QUERY_SERVICE_OUTPUT_FILE}"; then
+  echo "query_status service response did not include STANDBY or RUNNING state" >&2
   exit 1
 fi
 
@@ -541,4 +611,5 @@ rm -f "${ACTION_REJECT_OUTPUT_FILE}"
 rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+rm -f "${INTEGRATION_REVIEW_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"

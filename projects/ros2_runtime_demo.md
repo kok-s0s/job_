@@ -15,6 +15,7 @@
 - [2026-08-04：ROS2 心跳发布与订阅设计](/roadmap/daily/2026-08-04)
 - [2026-08-05：Watchdog 监控节点与超时 Fault](/roadmap/daily/2026-08-05)
 - [2026-08-06：记录关键耗时与性能观测](/roadmap/daily/2026-08-06)
+- [2026-08-07：第 1 阶段集成验收](/roadmap/daily/2026-08-07)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -40,6 +41,7 @@ robot_runtime_demo/
     ├── action_cancel_test_client.cpp
     ├── heartbeat_monitor_node.cpp
     ├── runtime_node.cpp
+    ├── runtime_integration_review.cpp
     ├── runtime_state_machine.hpp
     ├── runtime_state_machine_demo.cpp
     ├── runtime_state_machine_review.cpp
@@ -66,6 +68,7 @@ robot_runtime_demo/
 - `runtime_state_machine.hpp`：纯 C++ 状态机核心，负责 `IDLE/STANDBY/RUNNING/FAULT/RECOVERY` 的转换和错误码维护。
 - `runtime_state_machine_demo`：脱离 ROS2 通信的最小状态机验收程序，覆盖正常、故障、恢复和无效事件路径。
 - `runtime_state_machine_review`：第 3 周复盘可执行程序，输出状态转换表、错误语义和面试要点。
+- `runtime_integration_review`：第 1 阶段集成验收复盘程序，输出系统拓扑、证据清单、项目表达和 QoS 入口问题。
 - `runtime_demo.launch.py`：一次启动 `sensor_sim_node`、`runtime_node`、`heartbeat_monitor_node` 和 `watchdog_node` 四个节点，演示 ROS2 多进程节点协作。
 
 ## watchdog 验证结果（WSL2 / ROS2 Jazzy）
@@ -219,8 +222,9 @@ colcon=/usr/bin/colcon
 
 ```txt
 [ok] runtime state machine transitions verified
+[ok] phase 1 ROS2 runtime integration review ready
 [ok] week 3 runtime state machine review ready
-[ok] ROS2 runtime demo verified: state machine demo, week 3 review, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
+[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working
 ```
 
 本次实测频率：
@@ -315,6 +319,17 @@ colcon=/usr/bin/colcon
 - `/runtime/query_status` 响应已包含 `max_callback_duration_ms` 和 `last_action_duration_ms`，验收脚本已检查这些字段。
 - 今日任务把这些指标整理成可复盘、可面试表达的性能观测清单，明天再做第 1 阶段集成验收。
 
+2026-08-07 练习重点：
+
+- 第 4 周周五做第 1 阶段集成验收，不新增大功能，重点确认 ROS2 Runtime Demo 已形成完整闭环。
+- 验收入口仍是 `bash scripts/verify_ros2_runtime_demo.sh`，覆盖构建、launch、多节点启动、Topic、Service、Action、状态机、故障恢复、心跳、watchdog 和性能指标。
+- 已新增 `runtime_integration_review`，用可执行程序输出第 1 阶段系统拓扑、6 类证据清单、项目表达和第 5 周 QoS 入口问题。
+- `verify_ros2_runtime_demo.sh` 已检查 `runtime_integration_review` 输出，最终 `[ok]` 行包含 `phase 1 integration review`。
+- 正常 Action 验收任务调整为 30 步，确保脚本中的 `/runtime/query_status` 能稳定验证执行期 `state=RUNNING task_state=RUNNING`。
+- 今日复盘要把零散能力组织成项目表达：Topic 负责连续传感器数据，Service 负责查询/复位/事件注入，Action 负责可反馈、可取消的长任务。
+- 关键证据包括 `[runtime_log]`、`[heartbeat_table]`、`[watchdog]`、`[perf]`、`/runtime/query_status` 响应和 Action result。
+- 今天的输出是第 1 阶段项目讲解稿，并为第 5 周 DDS QoS 主题留下入口问题。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -327,6 +342,7 @@ colcon=/usr/bin/colcon
 - `runtime_state_machine.hpp` 展示纯 C++ 运行时状态机，便于脱离 ROS2 做快速验证和复盘。
 - `runtime_state_machine.hpp` 同时维护错误码语义，统一提供 severity、recoverable、reason 和 recovery_hint。
 - `runtime_state_machine_review.cpp` 展示如何把一周成果变成可运行、可检查的复盘输出。
+- `runtime_integration_review.cpp` 展示如何把第 1 阶段成果变成可运行、可检查的集成验收摘要。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。
 - `runtime_node.cpp` 同时输出 `[perf]` 性能聚合指标，用于区分通信延迟、回调耗时、Action 耗时和心跳新鲜度。
 - 构建后必须 `source install/setup.bash`，否则当前 shell 找不到新 package。

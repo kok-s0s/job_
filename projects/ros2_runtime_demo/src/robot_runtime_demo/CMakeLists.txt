@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(robot_runtime_demo)
+project(robot_runtime_demo LANGUAGES C CXX)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -42,6 +42,7 @@ target_link_libraries(action_cancel_test_client "${cpp_typesupport_target}")
 
 add_executable(runtime_state_machine_demo src/runtime_state_machine_demo.cpp)
 add_executable(runtime_state_machine_review src/runtime_state_machine_review.cpp)
+add_executable(runtime_integration_review src/runtime_integration_review.cpp)
 
 target_compile_features(runtime_node PRIVATE cxx_std_17)
 target_compile_features(sensor_sim_node PRIVATE cxx_std_17)
@@ -50,6 +51,7 @@ target_compile_features(watchdog_node PRIVATE cxx_std_17)
 target_compile_features(action_cancel_test_client PRIVATE cxx_std_17)
 target_compile_features(runtime_state_machine_demo PRIVATE cxx_std_17)
 target_compile_features(runtime_state_machine_review PRIVATE cxx_std_17)
+target_compile_features(runtime_integration_review PRIVATE cxx_std_17)
 
 install(TARGETS
   runtime_node
@@ -59,6 +61,7 @@ install(TARGETS
   action_cancel_test_client
   runtime_state_machine_demo
   runtime_state_machine_review
+  runtime_integration_review
   DESTINATION lib/${PROJECT_NAME}
 )
 
