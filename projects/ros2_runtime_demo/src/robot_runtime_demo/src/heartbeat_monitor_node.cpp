@@ -5,6 +5,7 @@
 #include <string>
 
 #include "rclcpp/rclcpp.hpp"
+#include "runtime_qos.hpp"
 #include "std_msgs/msg/string.hpp"
 
 using namespace std::chrono_literals;
@@ -31,13 +32,19 @@ class HeartbeatMonitorNode : public rclcpp::Node {
 public:
     HeartbeatMonitorNode()
         : Node("heartbeat_monitor_node") {
-        heartbeat_pub_ = create_publisher<std_msgs::msg::String>("/runtime/heartbeat", 10);
+        heartbeat_pub_ = create_publisher<std_msgs::msg::String>(
+            "/runtime/heartbeat",
+            robot_runtime_demo::heartbeatQos());
         heartbeat_sub_ = create_subscription<std_msgs::msg::String>(
             "/runtime/heartbeat",
-            10,
+            robot_runtime_demo::heartbeatQos(),
             [this](const std_msgs::msg::String::SharedPtr msg) {
                 handleHeartbeat(msg->data);
             });
+        RCLCPP_INFO(
+            get_logger(),
+            "[qos] topic=/runtime/heartbeat role=heartbeat %s",
+            robot_runtime_demo::heartbeatQosSummary());
         publish_timer_ = create_wall_timer(1s, [this] {
             publishHeartbeat();
         });

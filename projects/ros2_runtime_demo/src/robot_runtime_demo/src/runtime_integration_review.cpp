@@ -15,7 +15,7 @@ constexpr std::array<IntegrationRow, 6> kIntegrationRows{{
         "sensor_sim_node",
         "/robot/imu, /robot/joint_states",
         "publish typed sensor streams at 10Hz",
-        "ros2 topic echo + ros2 topic hz",
+        "ros2 topic echo with best_effort + ros2 topic info --verbose",
     },
     {
         "runtime_node",

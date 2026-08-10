@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "rclcpp/rclcpp.hpp"
+#include "runtime_qos.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -15,9 +16,27 @@ class SensorSimNode : public rclcpp::Node {
 public:
     SensorSimNode()
         : Node("sensor_sim_node") {
-        imu_pub_ = create_publisher<sensor_msgs::msg::Imu>("/robot/imu", 10);
-        joint_pub_ = create_publisher<sensor_msgs::msg::JointState>("/robot/joint_states", 10);
-        heartbeat_pub_ = create_publisher<std_msgs::msg::String>("/runtime/heartbeat", 10);
+        imu_pub_ = create_publisher<sensor_msgs::msg::Imu>(
+            "/robot/imu",
+            robot_runtime_demo::sensorStreamQos());
+        joint_pub_ = create_publisher<sensor_msgs::msg::JointState>(
+            "/robot/joint_states",
+            robot_runtime_demo::sensorStreamQos());
+        heartbeat_pub_ = create_publisher<std_msgs::msg::String>(
+            "/runtime/heartbeat",
+            robot_runtime_demo::heartbeatQos());
+        RCLCPP_INFO(
+            get_logger(),
+            "[qos] topic=/robot/imu role=sensor_stream %s",
+            robot_runtime_demo::sensorStreamQosSummary());
+        RCLCPP_INFO(
+            get_logger(),
+            "[qos] topic=/robot/joint_states role=sensor_stream %s",
+            robot_runtime_demo::sensorStreamQosSummary());
+        RCLCPP_INFO(
+            get_logger(),
+            "[qos] topic=/runtime/heartbeat role=heartbeat %s",
+            robot_runtime_demo::heartbeatQosSummary());
         timer_ = create_wall_timer(100ms, [this] {
             publishSensors();
         });

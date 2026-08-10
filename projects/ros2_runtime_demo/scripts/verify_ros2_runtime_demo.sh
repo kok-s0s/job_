@@ -127,23 +127,29 @@ wait_for_action /runtime/execute_task
 
 echo "[topic] /robot/imu --once"
 IMU_OUTPUT_FILE=$(mktemp)
-timeout 10s ros2 topic echo /robot/imu --once >"${IMU_OUTPUT_FILE}" 2>&1 || true
+timeout 10s ros2 topic echo \
+  /robot/imu \
+  --once \
+  --qos-reliability best_effort >"${IMU_OUTPUT_FILE}" 2>&1 || true
 
 echo "[topic] /robot/joint_states --once"
 JOINT_OUTPUT_FILE=$(mktemp)
-timeout 10s ros2 topic echo /robot/joint_states --once >"${JOINT_OUTPUT_FILE}" 2>&1 || true
+timeout 10s ros2 topic echo \
+  /robot/joint_states \
+  --once \
+  --qos-reliability best_effort >"${JOINT_OUTPUT_FILE}" 2>&1 || true
 
 echo "[topic] /runtime/heartbeat --once"
 HEARTBEAT_OUTPUT_FILE=$(mktemp)
 timeout 10s ros2 topic echo /runtime/heartbeat --once >"${HEARTBEAT_OUTPUT_FILE}" 2>&1 || true
 
-echo "[hz] /robot/imu"
+echo "[qos] /robot/imu"
 IMU_HZ_OUTPUT_FILE=$(mktemp)
-timeout 8s ros2 topic hz /robot/imu >"${IMU_HZ_OUTPUT_FILE}" 2>&1 || true
+ros2 topic info /robot/imu --verbose >"${IMU_HZ_OUTPUT_FILE}" 2>&1 || true
 
-echo "[hz] /robot/joint_states"
+echo "[qos] /robot/joint_states"
 JOINT_HZ_OUTPUT_FILE=$(mktemp)
-timeout 8s ros2 topic hz /robot/joint_states >"${JOINT_HZ_OUTPUT_FILE}" 2>&1 || true
+ros2 topic info /robot/joint_states --verbose >"${JOINT_HZ_OUTPUT_FILE}" 2>&1 || true
 
 echo "[watchdog] heartbeat timeout check"
 WATCHDOG_OUTPUT_FILE=$(mktemp)
@@ -285,6 +291,19 @@ if ! grep -q "published sensors" "${OUTPUT_FILE}"; then
   exit 1
 fi
 
+if ! grep -q "\[qos\] topic=/robot/imu role=sensor_stream reliability=best_effort durability=volatile history=keep_last depth=5" "${OUTPUT_FILE}" ||
+  ! grep -q "\[qos\] topic=/robot/joint_states role=sensor_stream reliability=best_effort durability=volatile history=keep_last depth=5" "${OUTPUT_FILE}" ||
+  ! grep -q "\[qos\] topic=/runtime/heartbeat role=heartbeat reliability=reliable durability=volatile history=keep_last depth=3" "${OUTPUT_FILE}"; then
+  echo "QoS configuration output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
 if ! grep -q "\[runtime_log\].*event=heartbeat.*message=\"runtime status state=" "${OUTPUT_FILE}"; then
   echo "runtime subscriber output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
@@ -398,8 +417,9 @@ if ! grep -q "joint_1" "${JOINT_OUTPUT_FILE}"; then
   exit 1
 fi
 
-if ! grep -q "average rate" "${IMU_HZ_OUTPUT_FILE}"; then
-  echo "/robot/imu hz output was not observed" >&2
+if ! grep -q "Reliability: BEST_EFFORT" "${IMU_HZ_OUTPUT_FILE}" ||
+  ! grep -q "Durability: VOLATILE" "${IMU_HZ_OUTPUT_FILE}"; then
+  echo "/robot/imu best-effort QoS output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
   rm -f "${JOINT_OUTPUT_FILE}"
@@ -409,8 +429,9 @@ if ! grep -q "average rate" "${IMU_HZ_OUTPUT_FILE}"; then
   exit 1
 fi
 
-if ! grep -q "average rate" "${JOINT_HZ_OUTPUT_FILE}"; then
-  echo "/robot/joint_states hz output was not observed" >&2
+if ! grep -q "Reliability: BEST_EFFORT" "${JOINT_HZ_OUTPUT_FILE}" ||
+  ! grep -q "Durability: VOLATILE" "${JOINT_HZ_OUTPUT_FILE}"; then
+  echo "/robot/joint_states best-effort QoS output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
   rm -f "${JOINT_OUTPUT_FILE}"
@@ -612,4 +633,4 @@ rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
 rm -f "${INTEGRATION_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"

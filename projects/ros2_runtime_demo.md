@@ -16,6 +16,7 @@
 - [2026-08-05：Watchdog 监控节点与超时 Fault](/roadmap/daily/2026-08-05)
 - [2026-08-06：记录关键耗时与性能观测](/roadmap/daily/2026-08-06)
 - [2026-08-07：第 1 阶段集成验收](/roadmap/daily/2026-08-07)
+- [2026-08-10：DDS QoS 基础对比](/roadmap/daily/2026-08-10)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -330,6 +331,17 @@ colcon=/usr/bin/colcon
 - 关键证据包括 `[runtime_log]`、`[heartbeat_table]`、`[watchdog]`、`[perf]`、`/runtime/query_status` 响应和 Action result。
 - 今天的输出是第 1 阶段项目讲解稿，并为第 5 周 DDS QoS 主题留下入口问题。
 
+2026-08-10 练习重点：
+
+- 第 5 周进入 DDS QoS 与通信可靠性，今天先理解 `reliability`、`durability`、`history` 和 `depth`。
+- QoS 选择要按数据语义区分：高频传感器流优先实时性，状态命令和故障事件优先确定性，心跳要平衡可靠性和误报风险。
+- 已新增 `runtime_qos.hpp`，集中定义传感器流和心跳 QoS，避免多个节点各写一份裸 `10`。
+- `/robot/imu` 和 `/robot/joint_states` 更关注最新值，已配置为 `best_effort + volatile + keep_last(5)`，避免旧数据堆积。
+- `/runtime/heartbeat` 是 watchdog 的依据，低频但语义重要，已配置为 `reliable + volatile + keep_last(3)`。
+- `/runtime/apply_event` 和 `/runtime/execute_task` 表达控制语义，需要明确成功、失败、取消或拒绝，不应无声丢失。
+- 节点启动时输出 `[qos]` 证据，验收脚本同时用 `ros2 topic echo --qos-reliability best_effort` 读取传感器样本，用 `ros2 topic info --verbose` 检查 DDS 可见的 `Reliability: BEST_EFFORT` 和 `Durability: VOLATILE`。
+- ROS2 完整验收脚本已通过，最终 `[ok]` 行包含 `DDS QoS profiles`。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -343,6 +355,7 @@ colcon=/usr/bin/colcon
 - `runtime_state_machine.hpp` 同时维护错误码语义，统一提供 severity、recoverable、reason 和 recovery_hint。
 - `runtime_state_machine_review.cpp` 展示如何把一周成果变成可运行、可检查的复盘输出。
 - `runtime_integration_review.cpp` 展示如何把第 1 阶段成果变成可运行、可检查的集成验收摘要。
+- `runtime_qos.hpp` 展示如何把 Topic QoS 策略集中命名：传感器流用 best effort，心跳用 reliable。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。
 - `runtime_node.cpp` 同时输出 `[perf]` 性能聚合指标，用于区分通信延迟、回调耗时、Action 耗时和心跳新鲜度。
 - 构建后必须 `source install/setup.bash`，否则当前 shell 找不到新 package。

@@ -15,6 +15,7 @@
 #include "rclcpp_action/rclcpp_action.hpp"
 #include "robot_runtime_demo/action/execute_task.hpp"
 #include "robot_runtime_demo/srv/apply_runtime_event.hpp"
+#include "runtime_qos.hpp"
 #include "runtime_state_machine.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
@@ -31,11 +32,25 @@ public:
 
     RuntimeNode()
         : Node("runtime_node") {
-        heartbeat_pub_ = create_publisher<std_msgs::msg::String>("/runtime/heartbeat", 10);
+        heartbeat_pub_ = create_publisher<std_msgs::msg::String>(
+            "/runtime/heartbeat",
+            robot_runtime_demo::heartbeatQos());
+        RCLCPP_INFO(
+            get_logger(),
+            "[qos] topic=/runtime/heartbeat role=heartbeat %s",
+            robot_runtime_demo::heartbeatQosSummary());
+        RCLCPP_INFO(
+            get_logger(),
+            "[qos] topic=/robot/imu role=sensor_stream %s",
+            robot_runtime_demo::sensorStreamQosSummary());
+        RCLCPP_INFO(
+            get_logger(),
+            "[qos] topic=/robot/joint_states role=sensor_stream %s",
+            robot_runtime_demo::sensorStreamQosSummary());
 
         imu_sub_ = create_subscription<sensor_msgs::msg::Imu>(
             "/robot/imu",
-            10,
+            robot_runtime_demo::sensorStreamQos(),
             [this](const sensor_msgs::msg::Imu::SharedPtr msg) {
                 const auto callback_started = now();
                 ++imu_count_;
@@ -52,7 +67,7 @@ public:
 
         joint_sub_ = create_subscription<sensor_msgs::msg::JointState>(
             "/robot/joint_states",
-            10,
+            robot_runtime_demo::sensorStreamQos(),
             [this](const sensor_msgs::msg::JointState::SharedPtr msg) {
                 const auto callback_started = now();
                 ++joint_count_;

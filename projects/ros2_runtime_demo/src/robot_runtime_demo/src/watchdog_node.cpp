@@ -6,6 +6,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "robot_runtime_demo/srv/apply_runtime_event.hpp"
+#include "runtime_qos.hpp"
 #include "std_msgs/msg/string.hpp"
 
 using namespace std::chrono_literals;
@@ -36,10 +37,12 @@ public:
   WatchdogNode() : Node("watchdog_node") {
     // 订阅所有节点发布到 /runtime/heartbeat 的心跳。
     heartbeat_sub_ = create_subscription<std_msgs::msg::String>(
-        "/runtime/heartbeat", 10,
+        "/runtime/heartbeat", robot_runtime_demo::heartbeatQos(),
         [this](const std_msgs::msg::String::SharedPtr msg) {
           handleHeartbeat(msg->data);
         });
+    RCLCPP_INFO(get_logger(), "[qos] topic=/runtime/heartbeat role=heartbeat %s",
+                robot_runtime_demo::heartbeatQosSummary());
 
     // 周期检查每个节点最后一次心跳是否超时。
     check_timer_ = create_wall_timer(1s, [this] { checkTimeouts(); });
