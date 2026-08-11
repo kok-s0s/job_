@@ -102,6 +102,10 @@ echo "[review] runtime_integration_review"
 INTEGRATION_REVIEW_OUTPUT_FILE=$(mktemp)
 ros2 run "${PACKAGE_NAME}" runtime_integration_review >"${INTEGRATION_REVIEW_OUTPUT_FILE}" 2>&1
 
+echo "[review] runtime_sensor_qos_review"
+SENSOR_QOS_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_sensor_qos_review >"${SENSOR_QOS_REVIEW_OUTPUT_FILE}" 2>&1
+
 echo "[run] ${PACKAGE_NAME}/${LAUNCH_FILE}"
 OUTPUT_FILE=$(mktemp)
 
@@ -131,6 +135,13 @@ timeout 10s ros2 topic echo \
   /robot/imu \
   --once \
   --qos-reliability best_effort >"${IMU_OUTPUT_FILE}" 2>&1 || true
+
+echo "[topic] /robot/imu reliable mismatch"
+IMU_RELIABLE_MISMATCH_OUTPUT_FILE=$(mktemp)
+timeout 5s ros2 topic echo \
+  /robot/imu \
+  --once \
+  --qos-reliability reliable >"${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}" 2>&1 || true
 
 echo "[topic] /robot/joint_states --once"
 JOINT_OUTPUT_FILE=$(mktemp)
@@ -211,9 +222,15 @@ timeout 15s ros2 action send_goal --feedback \
   robot_runtime_demo/action/ExecuteTask \
   "{target_steps: 30}" >"${ACTION_OUTPUT_FILE}" 2>&1 &
 ACTION_PID=$!
-sleep 1
-timeout 10s ros2 service call \
-  /runtime/query_status std_srvs/srv/Trigger "{}" >"${ACTION_QUERY_OUTPUT_FILE}" 2>&1 || true
+for ((i = 0; i < 10; ++i)); do
+  timeout 10s ros2 service call \
+    /runtime/query_status std_srvs/srv/Trigger "{}" >"${ACTION_QUERY_OUTPUT_FILE}" 2>&1 || true
+  if grep -q "state=RUNNING" "${ACTION_QUERY_OUTPUT_FILE}" &&
+    grep -q "task_state=RUNNING" "${ACTION_QUERY_OUTPUT_FILE}"; then
+    break
+  fi
+  sleep 0.5
+done
 wait "${ACTION_PID}" || true
 timeout 10s ros2 action send_goal \
   /runtime/execute_task \
@@ -253,6 +270,8 @@ cat "${ACTION_CANCEL_OUTPUT_FILE}"
 cat "${STATE_MACHINE_OUTPUT_FILE}"
 cat "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
 cat "${INTEGRATION_REVIEW_OUTPUT_FILE}"
+cat "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
+cat "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"
 
 if ! grep -q "\[ok\] runtime state machine transitions verified" "${STATE_MACHINE_OUTPUT_FILE}"; then
   echo "runtime_state_machine_demo output was not observed" >&2
@@ -277,6 +296,15 @@ if ! grep -q "\[ok\] phase 1 ROS2 runtime integration review ready" "${INTEGRATI
   ! grep -q "next week QoS entry questions" "${INTEGRATION_REVIEW_OUTPUT_FILE}"; then
   echo "runtime_integration_review output was not observed" >&2
   rm -f "${INTEGRATION_REVIEW_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[ok\] sensor best-effort QoS review ready" "${SENSOR_QOS_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "/robot/imu" "${SENSOR_QOS_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "best_effort + volatile + keep_last(5)" "${SENSOR_QOS_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "reliable subscriber may not match a best_effort publisher" "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_sensor_qos_review output was not observed" >&2
+  rm -f "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
   exit 1
 fi
 
@@ -355,6 +383,18 @@ if ! grep -q "linear_acceleration" "${IMU_OUTPUT_FILE}"; then
   echo "/robot/imu output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${JOINT_OUTPUT_FILE}"
+  rm -f "${IMU_HZ_OUTPUT_FILE}"
+  rm -f "${JOINT_HZ_OUTPUT_FILE}"
+  rm -f "${SERVICE_OUTPUT_FILE}"
+  exit 1
+fi
+
+if grep -q "linear_acceleration" "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"; then
+  echo "reliable subscriber unexpectedly received best-effort IMU data" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${IMU_OUTPUT_FILE}"
+  rm -f "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"
   rm -f "${JOINT_OUTPUT_FILE}"
   rm -f "${IMU_HZ_OUTPUT_FILE}"
   rm -f "${JOINT_HZ_OUTPUT_FILE}"
@@ -608,6 +648,7 @@ fi
 
 rm -f "${OUTPUT_FILE}"
 rm -f "${IMU_OUTPUT_FILE}"
+rm -f "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"
 rm -f "${JOINT_OUTPUT_FILE}"
 rm -f "${HEARTBEAT_OUTPUT_FILE}"
 rm -f "${IMU_HZ_OUTPUT_FILE}"
@@ -633,4 +674,5 @@ rm -f "${ACTION_CANCEL_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
 rm -f "${INTEGRATION_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+rm -f "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
