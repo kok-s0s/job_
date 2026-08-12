@@ -18,6 +18,7 @@
 - [2026-08-07：第 1 阶段集成验收](/roadmap/daily/2026-08-07)
 - [2026-08-10：DDS QoS 基础对比](/roadmap/daily/2026-08-10)
 - [2026-08-11：传感器数据 best effort 验收实验](/roadmap/daily/2026-08-11)
+- [2026-08-12：状态命令 reliable 验收设计](/roadmap/daily/2026-08-12)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -355,6 +356,17 @@ colcon=/usr/bin/colcon
 - ROS2 完整验收脚本已通过，最终 `[ok]` 行包含 `sensor best-effort QoS review`；reliable mismatch 对照输出 `Last incompatible policy: RELIABILITY`。
 - 今日复盘目标是把“传感器流优先实时性，控制命令优先确定性”讲成一个工程判断，而不是单纯参数背诵。
 
+2026-08-12 练习重点：
+
+- 第 5 周周三转向状态命令和控制链路，理解为什么 Service / Action / 状态机事件必须有可靠确认。
+- 复盘入口是 `runtime_node.cpp`、`srv/ApplyRuntimeEvent.srv`、`action/ExecuteTask.action` 和 `runtime_state_machine.hpp`。
+- `/runtime/query_status` 与 `/runtime/reset_fault` 用 Service 表达一次性查询和复位，必须返回明确 response。
+- `/runtime/apply_event` 返回 `accepted`、`transitioned`、`previous_state`、`current_state` 和 `runtime_error`，用来区分“事件合法”和“状态真的转换”。
+- `/runtime/execute_task` 用 Action 表达长耗时任务，验收 goal accepted、feedback、result、rejection 和 cancel。
+- 已新增 `runtime_command_reliability_review`，把 query/reset/apply_event/execute_task 的可靠确认语义整理成可运行复盘输出。
+- `verify_ros2_runtime_demo.sh` 已纳入 command reliability review 检查，最终 `[ok]` 行包含 `command reliability review`。
+- 今日复盘目标是把“可靠通信不是所有数据都 reliable，而是关键控制命令必须有可验证结果”讲清楚。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -369,6 +381,7 @@ colcon=/usr/bin/colcon
 - `runtime_state_machine_review.cpp` 展示如何把一周成果变成可运行、可检查的复盘输出。
 - `runtime_integration_review.cpp` 展示如何把第 1 阶段成果变成可运行、可检查的集成验收摘要。
 - `runtime_sensor_qos_review.cpp` 展示传感器 best effort QoS 的实验结论和面试表达。
+- `runtime_command_reliability_review.cpp` 展示控制命令 reliable 语义：Service / Action 必须返回可验证的成功、失败、拒绝、状态变化或取消结果。
 - `runtime_qos.hpp` 展示如何把 Topic QoS 策略集中命名：传感器流用 best effort，心跳用 reliable。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。
 - `runtime_node.cpp` 同时输出 `[perf]` 性能聚合指标，用于区分通信延迟、回调耗时、Action 耗时和心跳新鲜度。

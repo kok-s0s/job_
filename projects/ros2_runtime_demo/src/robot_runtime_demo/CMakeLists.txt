@@ -44,6 +44,7 @@ add_executable(runtime_state_machine_demo src/runtime_state_machine_demo.cpp)
 add_executable(runtime_state_machine_review src/runtime_state_machine_review.cpp)
 add_executable(runtime_integration_review src/runtime_integration_review.cpp)
 add_executable(runtime_sensor_qos_review src/runtime_sensor_qos_review.cpp)
+add_executable(runtime_command_reliability_review src/runtime_command_reliability_review.cpp)
 
 target_compile_features(runtime_node PRIVATE cxx_std_17)
 target_compile_features(sensor_sim_node PRIVATE cxx_std_17)
@@ -54,6 +55,7 @@ target_compile_features(runtime_state_machine_demo PRIVATE cxx_std_17)
 target_compile_features(runtime_state_machine_review PRIVATE cxx_std_17)
 target_compile_features(runtime_integration_review PRIVATE cxx_std_17)
 target_compile_features(runtime_sensor_qos_review PRIVATE cxx_std_17)
+target_compile_features(runtime_command_reliability_review PRIVATE cxx_std_17)
 
 install(TARGETS
   runtime_node
@@ -65,6 +67,7 @@ install(TARGETS
   runtime_state_machine_review
   runtime_integration_review
   runtime_sensor_qos_review
+  runtime_command_reliability_review
   DESTINATION lib/${PROJECT_NAME}
 )
 

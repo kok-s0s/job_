@@ -106,6 +106,10 @@ echo "[review] runtime_sensor_qos_review"
 SENSOR_QOS_REVIEW_OUTPUT_FILE=$(mktemp)
 ros2 run "${PACKAGE_NAME}" runtime_sensor_qos_review >"${SENSOR_QOS_REVIEW_OUTPUT_FILE}" 2>&1
 
+echo "[review] runtime_command_reliability_review"
+COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_command_reliability_review >"${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}" 2>&1
+
 echo "[run] ${PACKAGE_NAME}/${LAUNCH_FILE}"
 OUTPUT_FILE=$(mktemp)
 
@@ -271,6 +275,7 @@ cat "${STATE_MACHINE_OUTPUT_FILE}"
 cat "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
 cat "${INTEGRATION_REVIEW_OUTPUT_FILE}"
 cat "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
+cat "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
 cat "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"
 
 if ! grep -q "\[ok\] runtime state machine transitions verified" "${STATE_MACHINE_OUTPUT_FILE}"; then
@@ -305,6 +310,17 @@ if ! grep -q "\[ok\] sensor best-effort QoS review ready" "${SENSOR_QOS_REVIEW_O
   ! grep -q "reliable subscriber may not match a best_effort publisher" "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"; then
   echo "runtime_sensor_qos_review output was not observed" >&2
   rm -f "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[ok\] command reliability review ready" "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "/runtime/query_status" "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "/runtime/apply_event" "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "/runtime/execute_task" "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "accepted=true means the event name is known" "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "control commands require deterministic acknowledgement" "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_command_reliability_review output was not observed" >&2
+  rm -f "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
   exit 1
 fi
 
@@ -675,4 +691,5 @@ rm -f "${STATE_MACHINE_OUTPUT_FILE}"
 rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
 rm -f "${INTEGRATION_REVIEW_OUTPUT_FILE}"
 rm -f "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+rm -f "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
