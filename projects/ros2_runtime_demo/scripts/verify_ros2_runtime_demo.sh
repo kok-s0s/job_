@@ -110,6 +110,10 @@ echo "[review] runtime_command_reliability_review"
 COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE=$(mktemp)
 ros2 run "${PACKAGE_NAME}" runtime_command_reliability_review >"${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}" 2>&1
 
+echo "[review] runtime_queue_depth_review"
+QUEUE_DEPTH_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_queue_depth_review >"${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}" 2>&1
+
 echo "[run] ${PACKAGE_NAME}/${LAUNCH_FILE}"
 OUTPUT_FILE=$(mktemp)
 
@@ -276,6 +280,7 @@ cat "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
 cat "${INTEGRATION_REVIEW_OUTPUT_FILE}"
 cat "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
 cat "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
+cat "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"
 cat "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"
 
 if ! grep -q "\[ok\] runtime state machine transitions verified" "${STATE_MACHINE_OUTPUT_FILE}"; then
@@ -321,6 +326,18 @@ if ! grep -q "\[ok\] command reliability review ready" "${COMMAND_RELIABILITY_RE
   ! grep -q "control commands require deterministic acknowledgement" "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"; then
   echo "runtime_command_reliability_review output was not observed" >&2
   rm -f "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[ok\] queue depth review ready" "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "/robot/imu" "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "keep_last(5)" "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "depth=1" "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "depth=20" "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "input_rate > processing_rate" "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "latency-versus-history tradeoff" "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_queue_depth_review output was not observed" >&2
+  rm -f "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"
   exit 1
 fi
 
@@ -692,4 +709,5 @@ rm -f "${STATE_MACHINE_REVIEW_OUTPUT_FILE}"
 rm -f "${INTEGRATION_REVIEW_OUTPUT_FILE}"
 rm -f "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
 rm -f "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+rm -f "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"

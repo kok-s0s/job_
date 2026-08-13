@@ -19,6 +19,7 @@
 - [2026-08-10：DDS QoS 基础对比](/roadmap/daily/2026-08-10)
 - [2026-08-11：传感器数据 best effort 验收实验](/roadmap/daily/2026-08-11)
 - [2026-08-12：状态命令 reliable 验收设计](/roadmap/daily/2026-08-12)
+- [2026-08-13：queue depth 对延迟的影响实验](/roadmap/daily/2026-08-13)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -367,6 +368,18 @@ colcon=/usr/bin/colcon
 - `verify_ros2_runtime_demo.sh` 已纳入 command reliability review 检查，最终 `[ok]` 行包含 `command reliability review`。
 - 今日复盘目标是把“可靠通信不是所有数据都 reliable，而是关键控制命令必须有可验证结果”讲清楚。
 
+2026-08-13 练习重点：
+
+- 第 5 周周四聚焦 `history + depth`，理解 Topic 队列长度如何影响延迟和旧数据积压。
+- 复盘入口是 `runtime_qos.hpp`、`sensor_sim_node.cpp`、`runtime_node.cpp`、`heartbeat_monitor_node.cpp` 和 `watchdog_node.cpp`。
+- `/robot/imu` 与 `/robot/joint_states` 的核心判断是保持最新状态，depth 太大可能让慢订阅者处理过期传感器样本。
+- `/runtime/heartbeat` 需要结合 `age_ms` 判断新鲜度，不能只靠堆积旧心跳来证明节点还活着。
+- 今天先设计 depth=1 / 5 / 20 的对比实验，把 `imu_latency_ms`、`joint_latency_ms` 和 backlog 现象联系起来。
+- 已新增 `runtime_queue_depth_review`，输出当前 depth 配置、depth=1 / 5 / 20 对比矩阵、backlog 条件和面试总结。
+- `verify_ros2_runtime_demo.sh` 已纳入 queue depth review 检查，最终 `[ok]` 行包含 `queue depth review`。
+- 本次 ROS2 实测 `/runtime/query_status` 中可观察到 `imu_latency_ms`、`joint_latency_ms` 和 `max_callback_duration_ms`，用于后续慢订阅者实验对比。
+- 今日复盘目标是把“queue depth 是延迟和丢弃之间的工程取舍”讲清楚。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -382,6 +395,7 @@ colcon=/usr/bin/colcon
 - `runtime_integration_review.cpp` 展示如何把第 1 阶段成果变成可运行、可检查的集成验收摘要。
 - `runtime_sensor_qos_review.cpp` 展示传感器 best effort QoS 的实验结论和面试表达。
 - `runtime_command_reliability_review.cpp` 展示控制命令 reliable 语义：Service / Action 必须返回可验证的成功、失败、拒绝、状态变化或取消结果。
+- `runtime_queue_depth_review.cpp` 展示 Topic queue depth 的工程取舍：小队列保护新鲜度，大队列保留历史但可能放大 backlog 延迟。
 - `runtime_qos.hpp` 展示如何把 Topic QoS 策略集中命名：传感器流用 best effort，心跳用 reliable。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。
 - `runtime_node.cpp` 同时输出 `[perf]` 性能聚合指标，用于区分通信延迟、回调耗时、Action 耗时和心跳新鲜度。
