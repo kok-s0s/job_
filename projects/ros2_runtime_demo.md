@@ -20,6 +20,8 @@
 - [2026-08-11：传感器数据 best effort 验收实验](/roadmap/daily/2026-08-11)
 - [2026-08-12：状态命令 reliable 验收设计](/roadmap/daily/2026-08-12)
 - [2026-08-13：queue depth 对延迟的影响实验](/roadmap/daily/2026-08-13)
+- [2026-08-14：QoS 面试表达与第 5 周验收](/roadmap/daily/2026-08-14)
+- [2026-08-18：rosbag2 录制运行时 Topic](/roadmap/daily/2026-08-18)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -380,6 +382,22 @@ colcon=/usr/bin/colcon
 - 本次 ROS2 实测 `/runtime/query_status` 中可观察到 `imu_latency_ms`、`joint_latency_ms` 和 `max_callback_duration_ms`，用于后续慢订阅者实验对比。
 - 今日复盘目标是把“queue depth 是延迟和丢弃之间的工程取舍”讲清楚。
 
+2026-08-14 练习重点：
+
+- 第 5 周周五做 QoS 面试表达和周验收，把 reliability、durability、history、depth 组织成一套项目解释。
+- 已新增 `runtime_qos_interview_review`，输出本周 QoS 决策表、tradeoff notes 和 interview summary。
+- `verify_ros2_runtime_demo.sh` 已纳入 QoS interview review 检查，最终 `[ok]` 行包含 `QoS interview review`。
+- 今日复盘目标是把“QoS 选择先看数据语义，再看可靠性、durability、depth 和可观测证据”讲清楚。
+
+2026-08-18 练习重点：
+
+- 第 6 周进入数据采集、录制与回放，今天先跑通 rosbag2 录制，把运行时现场变成可复现证据。
+- 录制对象是 `/robot/imu`、`/robot/joint_states` 和 `/runtime/heartbeat`，覆盖传感器输入、关节状态和节点存活证据。
+- 已新增 `runtime_rosbag_recording_review`，输出录制计划、`ros2 bag record` / `ros2 bag info` / `ros2 bag play` 命令和面试总结。
+- 已新增 `scripts/verify_ros2_bag_recording.sh`，自动启动 demo、录制 3 个 Topic，并用 `ros2 bag info` 验证 Topic 和消息数。
+- `verify_ros2_runtime_demo.sh` 已纳入 rosbag recording review 检查，最终 `[ok]` 行包含 `rosbag recording review`。
+- 今日复盘目标是把“rosbag2 是问题现场复现能力”讲清楚。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -396,11 +414,14 @@ colcon=/usr/bin/colcon
 - `runtime_sensor_qos_review.cpp` 展示传感器 best effort QoS 的实验结论和面试表达。
 - `runtime_command_reliability_review.cpp` 展示控制命令 reliable 语义：Service / Action 必须返回可验证的成功、失败、拒绝、状态变化或取消结果。
 - `runtime_queue_depth_review.cpp` 展示 Topic queue depth 的工程取舍：小队列保护新鲜度，大队列保留历史但可能放大 backlog 延迟。
+- `runtime_qos_interview_review.cpp` 展示第 5 周 QoS 面试表达，把传感器流、心跳、Service 和 Action 的通信选择连成项目讲述。
+- `runtime_rosbag_recording_review.cpp` 展示 rosbag2 录制计划，把 live runtime Topic 转成可回放证据。
 - `runtime_qos.hpp` 展示如何把 Topic QoS 策略集中命名：传感器流用 best effort，心跳用 reliable。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。
 - `runtime_node.cpp` 同时输出 `[perf]` 性能聚合指标，用于区分通信延迟、回调耗时、Action 耗时和心跳新鲜度。
 - 构建后必须 `source install/setup.bash`，否则当前 shell 找不到新 package。
 - `scripts/verify_ros2_runtime_demo.sh` 是验收入口，用来补齐环境检查、状态机 demo、构建、launch 启动、Topic 发布/订阅检查。
+- `scripts/verify_ros2_bag_recording.sh` 是 rosbag2 录制验收入口，用来验证 `/robot/imu`、`/robot/joint_states` 和 `/runtime/heartbeat` 能被录入 bag。
 
 ## ROS2 适合什么应用场景
 

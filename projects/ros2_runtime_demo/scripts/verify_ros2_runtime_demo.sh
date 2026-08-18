@@ -114,6 +114,14 @@ echo "[review] runtime_queue_depth_review"
 QUEUE_DEPTH_REVIEW_OUTPUT_FILE=$(mktemp)
 ros2 run "${PACKAGE_NAME}" runtime_queue_depth_review >"${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}" 2>&1
 
+echo "[review] runtime_qos_interview_review"
+QOS_INTERVIEW_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_qos_interview_review >"${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}" 2>&1
+
+echo "[review] runtime_rosbag_recording_review"
+ROSBAG_RECORDING_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_rosbag_recording_review >"${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}" 2>&1
+
 echo "[run] ${PACKAGE_NAME}/${LAUNCH_FILE}"
 OUTPUT_FILE=$(mktemp)
 
@@ -281,6 +289,8 @@ cat "${INTEGRATION_REVIEW_OUTPUT_FILE}"
 cat "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
 cat "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
 cat "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"
+cat "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}"
+cat "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"
 cat "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"
 
 if ! grep -q "\[ok\] runtime state machine transitions verified" "${STATE_MACHINE_OUTPUT_FILE}"; then
@@ -338,6 +348,27 @@ if ! grep -q "\[ok\] queue depth review ready" "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE
   ! grep -q "latency-versus-history tradeoff" "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"; then
   echo "runtime_queue_depth_review output was not observed" >&2
   rm -f "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[ok\] QoS interview review ready" "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "semantic first" "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "sensor streams prefer freshness" "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "control commands require deterministic acknowledgement" "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "small keep_last queues protect freshness" "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_qos_interview_review output was not observed" >&2
+  rm -f "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[ok\] rosbag recording review ready" "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "/robot/imu" "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "/robot/joint_states" "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "/runtime/heartbeat" "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "ros2 bag record" "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "replayable evidence" "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_rosbag_recording_review output was not observed" >&2
+  rm -f "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"
   exit 1
 fi
 
@@ -710,4 +741,6 @@ rm -f "${INTEGRATION_REVIEW_OUTPUT_FILE}"
 rm -f "${SENSOR_QOS_REVIEW_OUTPUT_FILE}"
 rm -f "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
 rm -f "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+rm -f "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}"
+rm -f "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, QoS interview review, rosbag recording review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
