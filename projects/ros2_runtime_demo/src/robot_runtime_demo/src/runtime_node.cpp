@@ -16,6 +16,7 @@
 #include "robot_runtime_demo/action/execute_task.hpp"
 #include "robot_runtime_demo/srv/apply_runtime_event.hpp"
 #include "runtime_qos.hpp"
+#include "runtime_session.hpp"
 #include "runtime_state_machine.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
@@ -35,6 +36,10 @@ public:
         heartbeat_pub_ = create_publisher<std_msgs::msg::String>(
             "/runtime/heartbeat",
             robot_runtime_demo::heartbeatQos());
+        RCLCPP_INFO(
+            get_logger(),
+            "[session] node=runtime_node session_id=%s",
+            session_id_.c_str());
         RCLCPP_INFO(
             get_logger(),
             "[qos] topic=/runtime/heartbeat role=heartbeat %s",
@@ -471,6 +476,7 @@ private:
             << "[runtime_log]"
             << " ts=" << now().nanoseconds() / 1000000
             << " node=" << get_name()
+            << " session_id=" << session_id_
             << " level=" << level
             << " event=" << event
             << " state=" << stateName(runtime_state)
@@ -499,6 +505,7 @@ private:
         payload << "node=runtime_node"
                 << " seq=" << ++heartbeat_sequence_
                 << " stamp_ms=" << now().nanoseconds() / 1000000
+                << " session_id=" << session_id_
                 << " state=" << stateName(runtime_state)
                 << " runtime_error=" << errorName(runtime_error)
                 << " severity=" << severityName(info.severity)
@@ -525,9 +532,10 @@ private:
         }
         RCLCPP_INFO(
             get_logger(),
-            "[perf] node=runtime_node imu_latency_ms=%.2f joint_latency_ms=%.2f "
+            "[perf] node=runtime_node session_id=%s imu_latency_ms=%.2f joint_latency_ms=%.2f "
             "max_callback_duration_ms=%.2f heartbeat_duration_ms=%.2f "
             "last_action_duration_ms=%.2f task_step=%d",
+            session_id_.c_str(),
             latest_imu_latency_ms_,
             latest_joint_latency_ms_,
             max_callback_duration_ms,
@@ -665,7 +673,8 @@ private:
 
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(2)
-            << "state=" << stateName(runtime_state)
+            << "session_id=" << session_id_
+            << " state=" << stateName(runtime_state)
             << " runtime_error=" << errorName(runtime_error)
             << " runtime_severity=" << severityName(info.severity)
             << " runtime_recoverable=" << static_cast<int>(info.recoverable)
@@ -700,6 +709,7 @@ private:
     mutable std::mutex runtime_state_mutex_;
     mutable std::mutex performance_mutex_;
     RuntimeStateMachine runtime_state_machine_;
+    const std::string session_id_ = robot_runtime_demo::runtimeSessionId();
     std::size_t imu_count_ = 0;
     std::size_t joint_count_ = 0;
     std::size_t latest_joint_count_ = 0;

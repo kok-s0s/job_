@@ -122,6 +122,14 @@ echo "[review] runtime_rosbag_recording_review"
 ROSBAG_RECORDING_REVIEW_OUTPUT_FILE=$(mktemp)
 ros2 run "${PACKAGE_NAME}" runtime_rosbag_recording_review >"${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}" 2>&1
 
+echo "[review] runtime_session_trace_review"
+SESSION_TRACE_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_session_trace_review >"${SESSION_TRACE_REVIEW_OUTPUT_FILE}" 2>&1
+
+echo "[review] runtime_fault_reproduction_review"
+FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_fault_reproduction_review >"${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}" 2>&1
+
 echo "[run] ${PACKAGE_NAME}/${LAUNCH_FILE}"
 OUTPUT_FILE=$(mktemp)
 
@@ -291,6 +299,8 @@ cat "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
 cat "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"
 cat "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}"
 cat "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"
+cat "${SESSION_TRACE_REVIEW_OUTPUT_FILE}"
+cat "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"
 cat "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"
 
 if ! grep -q "\[ok\] runtime state machine transitions verified" "${STATE_MACHINE_OUTPUT_FILE}"; then
@@ -372,6 +382,24 @@ if ! grep -q "\[ok\] rosbag recording review ready" "${ROSBAG_RECORDING_REVIEW_O
   exit 1
 fi
 
+if ! grep -q "\[ok\] session trace review ready" "${SESSION_TRACE_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "session_id=<id>" "${SESSION_TRACE_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "ROBOT_RUNTIME_SESSION_ID" "${SESSION_TRACE_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "traceable experiment" "${SESSION_TRACE_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_session_trace_review output was not observed" >&2
+  rm -f "${SESSION_TRACE_REVIEW_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[ok\] fault reproduction review ready" "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "SensorTimeout enters FAULT" "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "ResetFault -> RECOVERY" "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "verify_fault_reproduction.sh" "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_fault_reproduction_review output was not observed" >&2
+  rm -f "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"
+  exit 1
+fi
+
 if ! grep -q "published sensors" "${OUTPUT_FILE}"; then
   echo "typed sensor publisher output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
@@ -396,7 +424,7 @@ if ! grep -q "\[qos\] topic=/robot/imu role=sensor_stream reliability=best_effor
   exit 1
 fi
 
-if ! grep -q "\[runtime_log\].*event=heartbeat.*message=\"runtime status state=" "${OUTPUT_FILE}"; then
+if ! grep -q "\[runtime_log\].*event=heartbeat.*message=\"runtime status session_id=.* state=" "${OUTPUT_FILE}"; then
   echo "runtime subscriber output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
@@ -407,7 +435,7 @@ if ! grep -q "\[runtime_log\].*event=heartbeat.*message=\"runtime status state="
   exit 1
 fi
 
-if ! grep -q "\[runtime_log\].*node=runtime_node.*level=INFO.*event=heartbeat.*state=.*runtime_error=.*severity=.*recoverable=.*latency_ms=.*duration_ms=.*message=" "${OUTPUT_FILE}" ||
+if ! grep -q "\[runtime_log\].*node=runtime_node.*session_id=.*level=INFO.*event=heartbeat.*state=.*runtime_error=.*severity=.*recoverable=.*latency_ms=.*duration_ms=.*message=" "${OUTPUT_FILE}" ||
   ! grep -q "\[runtime_log\].*event=state_transition.*runtime transition" "${OUTPUT_FILE}" ||
   ! grep -q "\[runtime_log\].*event=service_call.*query_status" "${OUTPUT_FILE}" ||
   ! grep -q "\[runtime_log\].*event=action_feedback.*execute_task feedback" "${OUTPUT_FILE}"; then
@@ -421,7 +449,7 @@ if ! grep -q "\[runtime_log\].*node=runtime_node.*level=INFO.*event=heartbeat.*s
   exit 1
 fi
 
-if ! grep -q "\[perf\] node=runtime_node.*imu_latency_ms=.*joint_latency_ms=.*max_callback_duration_ms=.*heartbeat_duration_ms=.*last_action_duration_ms=.*task_step=" "${OUTPUT_FILE}"; then
+if ! grep -q "\[perf\] node=runtime_node.*session_id=.*imu_latency_ms=.*joint_latency_ms=.*max_callback_duration_ms=.*heartbeat_duration_ms=.*last_action_duration_ms=.*task_step=" "${OUTPUT_FILE}"; then
   echo "runtime performance summary output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
@@ -466,7 +494,7 @@ if grep -q "linear_acceleration" "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"; then
   exit 1
 fi
 
-if ! grep -q "node=.*seq=.*stamp_ms=.*status=.*message=" "${HEARTBEAT_OUTPUT_FILE}"; then
+if ! grep -q "node=.*seq=.*stamp_ms=.*session_id=.*status=.*message=" "${HEARTBEAT_OUTPUT_FILE}"; then
   echo "/runtime/heartbeat output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
   rm -f "${IMU_OUTPUT_FILE}"
@@ -595,6 +623,7 @@ if ! grep -q "robot_runtime_demo/srv/ApplyRuntimeEvent" "${APPLY_EVENT_TYPE_FILE
 fi
 
 if ! grep -q "success=True" "${QUERY_SERVICE_OUTPUT_FILE}" ||
+  ! grep -q "session_id=" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_error=NONE" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_severity=INFO" "${QUERY_SERVICE_OUTPUT_FILE}" ||
   ! grep -q "runtime_recoverable=1" "${QUERY_SERVICE_OUTPUT_FILE}" ||
@@ -743,4 +772,6 @@ rm -f "${COMMAND_RELIABILITY_REVIEW_OUTPUT_FILE}"
 rm -f "${QUEUE_DEPTH_REVIEW_OUTPUT_FILE}"
 rm -f "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}"
 rm -f "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, QoS interview review, rosbag recording review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+rm -f "${SESSION_TRACE_REVIEW_OUTPUT_FILE}"
+rm -f "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, QoS interview review, rosbag recording review, session trace review, fault reproduction review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"

@@ -22,6 +22,8 @@
 - [2026-08-13：queue depth 对延迟的影响实验](/roadmap/daily/2026-08-13)
 - [2026-08-14：QoS 面试表达与第 5 周验收](/roadmap/daily/2026-08-14)
 - [2026-08-18：rosbag2 录制运行时 Topic](/roadmap/daily/2026-08-18)
+- [2026-08-19：给运行时日志增加 session id](/roadmap/daily/2026-08-19)
+- [2026-08-20：固定触发一次故障复现](/roadmap/daily/2026-08-20)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -398,6 +400,26 @@ colcon=/usr/bin/colcon
 - `verify_ros2_runtime_demo.sh` 已纳入 rosbag recording review 检查，最终 `[ok]` 行包含 `rosbag recording review`。
 - 今日复盘目标是把“rosbag2 是问题现场复现能力”讲清楚。
 
+2026-08-19 练习重点：
+
+- 第 6 周周三给运行时日志增加 `session_id`，让一次实验里的日志、心跳、Service 快照和 perf 指标能被串起来。
+- 已新增 `runtime_session.hpp`，统一从 `ROBOT_RUNTIME_SESSION_ID` 读取实验 id，未设置时使用 `local_session`。
+- `runtime_node` 的 `[runtime_log]`、`/runtime/heartbeat`、`/runtime/query_status` 和 `[perf]` 已输出 `session_id`。
+- `sensor_sim_node` 与 `heartbeat_monitor_node` 的 heartbeat 已输出 `session_id`，`watchdog_node` 能解析 heartbeat payload 中的 session 字段。
+- 已新增 `runtime_session_trace_review`，输出 session trace surfaces、命令和面试总结。
+- `verify_ros2_runtime_demo.sh` 已纳入 session trace review 和 session 字段检查。
+- 今日复盘目标是把“session id 把多节点日志和 rosbag2 录制变成同一次实验的证据链”讲清楚。
+
+2026-08-20 练习重点：
+
+- 第 6 周周四写固定故障复现脚本，自动触发 `SensorTimeout -> FAULT -> ResetFault -> RecoveryDone -> STANDBY`。
+- 已新增 `runtime_fault_reproduction_review`，输出固定故障路径、证据点和面试总结。
+- 已新增 `scripts/verify_fault_reproduction.sh`，自动构建、启动 demo、设置 `ROBOT_RUNTIME_SESSION_ID`、触发故障、验证恢复。
+- 脚本会检查 `state=FAULT`、`runtime_error=SENSOR_TIMEOUT`、`runtime_severity=CRITICAL`，并确认恢复后回到 `STANDBY`。
+- 脚本同时检查同一 `session_id` 是否出现在 query、runtime log、heartbeat 和 perf 输出中。
+- `verify_ros2_runtime_demo.sh` 已纳入 fault reproduction review 检查，最终 `[ok]` 行包含 `fault reproduction review`。
+- 今日复盘目标是把“故障复现脚本把异常处理变成可重复验证的工程证据”讲清楚。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -416,12 +438,16 @@ colcon=/usr/bin/colcon
 - `runtime_queue_depth_review.cpp` 展示 Topic queue depth 的工程取舍：小队列保护新鲜度，大队列保留历史但可能放大 backlog 延迟。
 - `runtime_qos_interview_review.cpp` 展示第 5 周 QoS 面试表达，把传感器流、心跳、Service 和 Action 的通信选择连成项目讲述。
 - `runtime_rosbag_recording_review.cpp` 展示 rosbag2 录制计划，把 live runtime Topic 转成可回放证据。
+- `runtime_session_trace_review.cpp` 展示 session id 如何贯穿 runtime log、heartbeat、query_status 和 perf 指标。
+- `runtime_fault_reproduction_review.cpp` 展示固定故障复现路径和恢复链证据。
+- `runtime_session.hpp` 展示如何从 `ROBOT_RUNTIME_SESSION_ID` 给多节点实验统一打 session id。
 - `runtime_qos.hpp` 展示如何把 Topic QoS 策略集中命名：传感器流用 best effort，心跳用 reliable。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。
 - `runtime_node.cpp` 同时输出 `[perf]` 性能聚合指标，用于区分通信延迟、回调耗时、Action 耗时和心跳新鲜度。
 - 构建后必须 `source install/setup.bash`，否则当前 shell 找不到新 package。
 - `scripts/verify_ros2_runtime_demo.sh` 是验收入口，用来补齐环境检查、状态机 demo、构建、launch 启动、Topic 发布/订阅检查。
 - `scripts/verify_ros2_bag_recording.sh` 是 rosbag2 录制验收入口，用来验证 `/robot/imu`、`/robot/joint_states` 和 `/runtime/heartbeat` 能被录入 bag。
+- `scripts/verify_fault_reproduction.sh` 是故障复现验收入口，用来验证 `SensorTimeout`、故障元数据、恢复链和 session id 证据。
 
 ## ROS2 适合什么应用场景
 

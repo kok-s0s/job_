@@ -6,6 +6,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "runtime_qos.hpp"
+#include "runtime_session.hpp"
 #include "std_msgs/msg/string.hpp"
 
 using namespace std::chrono_literals;
@@ -43,6 +44,10 @@ public:
             });
         RCLCPP_INFO(
             get_logger(),
+            "[session] node=heartbeat_monitor_node session_id=%s",
+            session_id_.c_str());
+        RCLCPP_INFO(
+            get_logger(),
             "[qos] topic=/runtime/heartbeat role=heartbeat %s",
             robot_runtime_demo::heartbeatQosSummary());
         publish_timer_ = create_wall_timer(1s, [this] {
@@ -58,6 +63,7 @@ private:
         std::size_t seq = 0;
         int64_t stamp_ms = 0;
         std::string status = "UNKNOWN";
+        std::string session_id = "unknown";
     };
 
     void handleHeartbeat(const std::string& payload) {
@@ -78,6 +84,9 @@ private:
         if (const auto status_it = values.find("status"); status_it != values.end()) {
             record.status = status_it->second;
         }
+        if (const auto session_it = values.find("session_id"); session_it != values.end()) {
+            record.session_id = session_it->second;
+        }
 
         RCLCPP_INFO(get_logger(), "[heartbeat_rx] %s", payload.c_str());
     }
@@ -88,6 +97,7 @@ private:
         payload << "node=heartbeat_monitor_node"
                 << " seq=" << ++heartbeat_sequence_
                 << " stamp_ms=" << nowMs()
+                << " session_id=" << session_id_
                 << " status=OK"
                 << " message=\"heartbeat monitor alive\"";
         heartbeat.data = payload.str();
@@ -120,6 +130,7 @@ private:
     rclcpp::TimerBase::SharedPtr report_timer_;
     std::map<std::string, HeartbeatRecord> heartbeat_table_;
     std::size_t heartbeat_sequence_ = 0;
+    const std::string session_id_ = robot_runtime_demo::runtimeSessionId();
 };
 
 int main(int argc, char** argv) {

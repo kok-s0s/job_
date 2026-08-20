@@ -6,6 +6,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "runtime_qos.hpp"
+#include "runtime_session.hpp"
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -25,6 +26,10 @@ public:
         heartbeat_pub_ = create_publisher<std_msgs::msg::String>(
             "/runtime/heartbeat",
             robot_runtime_demo::heartbeatQos());
+        RCLCPP_INFO(
+            get_logger(),
+            "[session] node=sensor_sim_node session_id=%s",
+            session_id_.c_str());
         RCLCPP_INFO(
             get_logger(),
             "[qos] topic=/robot/imu role=sensor_stream %s",
@@ -92,6 +97,7 @@ private:
         payload << "node=sensor_sim_node"
                 << " seq=" << ++heartbeat_sequence_
                 << " stamp_ms=" << now().nanoseconds() / 1000000
+                << " session_id=" << session_id_
                 << " status=OK"
                 << " message=\"sensor publisher alive\"";
         heartbeat.data = payload.str();
@@ -106,6 +112,7 @@ private:
     rclcpp::TimerBase::SharedPtr heartbeat_timer_;
     std::size_t sequence_ = 0;
     std::size_t heartbeat_sequence_ = 0;
+    const std::string session_id_ = robot_runtime_demo::runtimeSessionId();
 };
 
 int main(int argc, char** argv) {
