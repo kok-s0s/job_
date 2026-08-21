@@ -50,6 +50,7 @@ add_executable(runtime_qos_interview_review src/runtime_qos_interview_review.cpp
 add_executable(runtime_rosbag_recording_review src/runtime_rosbag_recording_review.cpp)
 add_executable(runtime_session_trace_review src/runtime_session_trace_review.cpp)
 add_executable(runtime_fault_reproduction_review src/runtime_fault_reproduction_review.cpp)
+add_executable(runtime_data_loop_review src/runtime_data_loop_review.cpp)
 
 target_compile_features(runtime_node PRIVATE cxx_std_17)
 target_compile_features(sensor_sim_node PRIVATE cxx_std_17)
@@ -66,6 +67,7 @@ target_compile_features(runtime_qos_interview_review PRIVATE cxx_std_17)
 target_compile_features(runtime_rosbag_recording_review PRIVATE cxx_std_17)
 target_compile_features(runtime_session_trace_review PRIVATE cxx_std_17)
 target_compile_features(runtime_fault_reproduction_review PRIVATE cxx_std_17)
+target_compile_features(runtime_data_loop_review PRIVATE cxx_std_17)
 
 install(TARGETS
   runtime_node
@@ -83,6 +85,7 @@ install(TARGETS
   runtime_rosbag_recording_review
   runtime_session_trace_review
   runtime_fault_reproduction_review
+  runtime_data_loop_review
   DESTINATION lib/${PROJECT_NAME}
 )
 

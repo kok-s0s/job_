@@ -24,6 +24,7 @@
 - [2026-08-18：rosbag2 录制运行时 Topic](/roadmap/daily/2026-08-18)
 - [2026-08-19：给运行时日志增加 session id](/roadmap/daily/2026-08-19)
 - [2026-08-20：固定触发一次故障复现](/roadmap/daily/2026-08-20)
+- [2026-08-21：数据闭环笔记与第 6 周验收](/roadmap/daily/2026-08-21)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -420,6 +421,14 @@ colcon=/usr/bin/colcon
 - `verify_ros2_runtime_demo.sh` 已纳入 fault reproduction review 检查，最终 `[ok]` 行包含 `fault reproduction review`。
 - 今日复盘目标是把“故障复现脚本把异常处理变成可重复验证的工程证据”讲清楚。
 
+2026-08-21 练习重点：
+
+- 第 6 周周五整理数据闭环笔记，把采集、录制、回放、定位、修复和复验连成一条工程链路。
+- 已新增 `runtime_data_loop_review`，输出 `capture -> replay -> diagnose -> fix -> verify` 闭环、证据链和面试总结。
+- 闭环入口包含 `ros2 bag record`、`ros2 bag info`、`ros2 bag play`、`ROBOT_RUNTIME_SESSION_ID`、`query_status`、`[runtime_log]`、`[perf]` 和 `verify_fault_reproduction.sh`。
+- `verify_ros2_runtime_demo.sh` 已纳入 data loop review 检查，确保今日复盘内容可以随 ROS2 主验收一起验证。
+- 今日复盘目标是把“rosbag2 保存现场、session id 串联证据、故障脚本复验修复”讲成完整的数据闭环。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -440,6 +449,7 @@ colcon=/usr/bin/colcon
 - `runtime_rosbag_recording_review.cpp` 展示 rosbag2 录制计划，把 live runtime Topic 转成可回放证据。
 - `runtime_session_trace_review.cpp` 展示 session id 如何贯穿 runtime log、heartbeat、query_status 和 perf 指标。
 - `runtime_fault_reproduction_review.cpp` 展示固定故障复现路径和恢复链证据。
+- `runtime_data_loop_review.cpp` 展示采集、录制、回放、定位、修复和复验的数据闭环证据链。
 - `runtime_session.hpp` 展示如何从 `ROBOT_RUNTIME_SESSION_ID` 给多节点实验统一打 session id。
 - `runtime_qos.hpp` 展示如何把 Topic QoS 策略集中命名：传感器流用 best effort，心跳用 reliable。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。

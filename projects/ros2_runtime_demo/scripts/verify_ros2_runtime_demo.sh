@@ -130,6 +130,10 @@ echo "[review] runtime_fault_reproduction_review"
 FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE=$(mktemp)
 ros2 run "${PACKAGE_NAME}" runtime_fault_reproduction_review >"${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}" 2>&1
 
+echo "[review] runtime_data_loop_review"
+DATA_LOOP_REVIEW_OUTPUT_FILE=$(mktemp)
+ros2 run "${PACKAGE_NAME}" runtime_data_loop_review >"${DATA_LOOP_REVIEW_OUTPUT_FILE}" 2>&1
+
 echo "[run] ${PACKAGE_NAME}/${LAUNCH_FILE}"
 OUTPUT_FILE=$(mktemp)
 
@@ -301,6 +305,7 @@ cat "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}"
 cat "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"
 cat "${SESSION_TRACE_REVIEW_OUTPUT_FILE}"
 cat "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"
+cat "${DATA_LOOP_REVIEW_OUTPUT_FILE}"
 cat "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"
 
 if ! grep -q "\[ok\] runtime state machine transitions verified" "${STATE_MACHINE_OUTPUT_FILE}"; then
@@ -397,6 +402,16 @@ if ! grep -q "\[ok\] fault reproduction review ready" "${FAULT_REPRODUCTION_REVI
   ! grep -q "verify_fault_reproduction.sh" "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"; then
   echo "runtime_fault_reproduction_review output was not observed" >&2
   rm -f "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"
+  exit 1
+fi
+
+if ! grep -q "\[ok\] data loop review ready" "${DATA_LOOP_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "ros2 bag record" "${DATA_LOOP_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "ROBOT_RUNTIME_SESSION_ID" "${DATA_LOOP_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "verify_fault_reproduction.sh" "${DATA_LOOP_REVIEW_OUTPUT_FILE}" ||
+  ! grep -q "capture -> replay -> diagnose -> fix -> verify" "${DATA_LOOP_REVIEW_OUTPUT_FILE}"; then
+  echo "runtime_data_loop_review output was not observed" >&2
+  rm -f "${DATA_LOOP_REVIEW_OUTPUT_FILE}"
   exit 1
 fi
 
@@ -774,4 +789,5 @@ rm -f "${QOS_INTERVIEW_REVIEW_OUTPUT_FILE}"
 rm -f "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"
 rm -f "${SESSION_TRACE_REVIEW_OUTPUT_FILE}"
 rm -f "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, QoS interview review, rosbag recording review, session trace review, fault reproduction review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+rm -f "${DATA_LOOP_REVIEW_OUTPUT_FILE}"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, QoS interview review, rosbag recording review, session trace review, fault reproduction review, data loop review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
