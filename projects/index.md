@@ -16,6 +16,9 @@
 | 推理服务 | ONNX Runtime C++ | 能讲 AI 算法工程化落地 |
 | CAN 模拟驱动 | SocketCAN / vcan | 能讲执行器通信、超时和故障检测 |
 
+已落地入口：
+- [ONNX Runtime C++ Demo](onnx_runtime_cpp_demo.md)：生成小 ONNX 模型，并用 C++ 解析模型输入输出 shape、节点和 initializer。
+
 对应计划：[工作日 2 小时量化学习计划](/roadmap/weekday_2h_plan)
 
 ## 简历级展示项目（第 9-12 周）
