@@ -24,5 +24,12 @@ grep -q "\[node\] name=score_matmul op_type=MatMul" "${OUTPUT_FILE}"
 grep -q "\[node\] name=score_bias_add op_type=Add" "${OUTPUT_FILE}"
 grep -q "\[ok\] onnx model metadata loaded" "${OUTPUT_FILE}"
 
+echo "[run] fixed input inference"
+INFERENCE_OUTPUT_FILE=$(mktemp)
+./build/onnx_inference_demo | tee "${INFERENCE_OUTPUT_FILE}"
+grep -q "\[inference\] model=tiny_robot_score input=\[0.500,-1.000,0.200\] score=0.390 status=OK" "${INFERENCE_OUTPUT_FILE}"
+grep -q "\[ok\] fixed input inference stable" "${INFERENCE_OUTPUT_FILE}"
+
 rm -f "${OUTPUT_FILE}"
-echo "[ok] ONNX Runtime C++ demo verified: model generated, C++ loader built, input/output shapes inspected"
+rm -f "${INFERENCE_OUTPUT_FILE}"
+echo "[ok] ONNX Runtime C++ demo verified: model generated, C++ loader built, input/output shapes inspected, fixed input inference stable"

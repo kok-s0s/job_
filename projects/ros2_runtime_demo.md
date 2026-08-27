@@ -25,6 +25,7 @@
 - [2026-08-19：给运行时日志增加 session id](/roadmap/daily/2026-08-19)
 - [2026-08-20：固定触发一次故障复现](/roadmap/daily/2026-08-20)
 - [2026-08-21：数据闭环笔记与第 6 周验收](/roadmap/daily/2026-08-21)
+- [2026-08-27：接入 ROS2 推理节点](/roadmap/daily/2026-08-27)
 
 这是一个最小但完整的 ROS2 C++ package，用来验证 workspace、package、node、typed Topic、Service、Action、launch、`colcon build`、`ros2 run` / `ros2 launch` 的完整流程。
 
@@ -429,6 +430,14 @@ colcon=/usr/bin/colcon
 - `verify_ros2_runtime_demo.sh` 已纳入 data loop review 检查，确保今日复盘内容可以随 ROS2 主验收一起验证。
 - 今日复盘目标是把“rosbag2 保存现场、session id 串联证据、故障脚本复验修复”讲成完整的数据闭环。
 
+2026-08-27 练习重点：
+
+- 第 7 周周四把推理函数接入 ROS2 Runtime Demo，形成传感器输入到推理结果输出的最小链路。
+- 已新增 `inference_node`，订阅 `/robot/imu` 和 `/robot/joint_states`。
+- 已新增 `/runtime/inference_score` Topic，输出 `model=tiny_robot_score`、`session_id`、`score`、`status` 和输入特征。
+- `runtime_demo.launch.py` 已启动 `inference_node`，主验收脚本已检查推理 Topic 和 `[inference]` 日志。
+- 今日复盘目标是把“离线推理函数如何进入 ROS2 Topic 链路”讲清楚。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点
@@ -450,6 +459,8 @@ colcon=/usr/bin/colcon
 - `runtime_session_trace_review.cpp` 展示 session id 如何贯穿 runtime log、heartbeat、query_status 和 perf 指标。
 - `runtime_fault_reproduction_review.cpp` 展示固定故障复现路径和恢复链证据。
 - `runtime_data_loop_review.cpp` 展示采集、录制、回放、定位、修复和复验的数据闭环证据链。
+- `inference_node.cpp` 展示如何订阅模拟传感器数据并发布 `/runtime/inference_score` 推理结果。
+- `runtime_inference.hpp` 展示推理函数在 ROS2 节点中的稳定封装边界。
 - `runtime_session.hpp` 展示如何从 `ROBOT_RUNTIME_SESSION_ID` 给多节点实验统一打 session id。
 - `runtime_qos.hpp` 展示如何把 Topic QoS 策略集中命名：传感器流用 best effort，心跳用 reliable。
 - `runtime_node.cpp` 展示 typed Topic subscriber、状态机事件适配、健康判断、状态查询/故障复位 Service、故障语义输出，以及可反馈、可取消的 Action server。

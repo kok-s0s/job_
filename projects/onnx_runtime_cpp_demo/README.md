@@ -14,6 +14,20 @@ robot_features[1,3] -> MatMul(score_weight[3,1]) -> Add(score_bias[1]) -> anomal
 
 The model is intentionally small. The useful engineering point is the model boundary: input name, output name, tensor element type, shape, graph nodes, and initializer tensors.
 
+## Inference Function
+
+`src/tiny_robot_inference.hpp` wraps the same tiny scoring rule as a deterministic C++ function:
+
+```txt
+score = robot_features[0] * 0.2 + robot_features[1] * -0.1 + robot_features[2] * 0.7 + 0.05
+```
+
+`onnx_inference_demo` verifies a fixed input:
+
+```txt
+input=[0.500,-1.000,0.200] -> score=0.390 status=OK
+```
+
 ## Verify
 
 ```bash
@@ -28,5 +42,6 @@ Expected output:
 [input] name=robot_features elem_type=float shape=[1,3]
 [output] name=anomaly_score elem_type=float shape=[1,1]
 [ok] onnx model metadata loaded
-[ok] ONNX Runtime C++ demo verified: model generated, C++ loader built, input/output shapes inspected
+[ok] fixed input inference stable
+[ok] ONNX Runtime C++ demo verified: model generated, C++ loader built, input/output shapes inspected, fixed input inference stable
 ```

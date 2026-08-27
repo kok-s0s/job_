@@ -29,6 +29,9 @@ target_link_libraries(runtime_node "${cpp_typesupport_target}")
 add_executable(sensor_sim_node src/sensor_sim_node.cpp)
 ament_target_dependencies(sensor_sim_node rclcpp sensor_msgs std_msgs)
 
+add_executable(inference_node src/inference_node.cpp)
+ament_target_dependencies(inference_node rclcpp sensor_msgs std_msgs)
+
 add_executable(heartbeat_monitor_node src/heartbeat_monitor_node.cpp)
 ament_target_dependencies(heartbeat_monitor_node rclcpp std_msgs)
 
@@ -54,6 +57,7 @@ add_executable(runtime_data_loop_review src/runtime_data_loop_review.cpp)
 
 target_compile_features(runtime_node PRIVATE cxx_std_17)
 target_compile_features(sensor_sim_node PRIVATE cxx_std_17)
+target_compile_features(inference_node PRIVATE cxx_std_17)
 target_compile_features(heartbeat_monitor_node PRIVATE cxx_std_17)
 target_compile_features(watchdog_node PRIVATE cxx_std_17)
 target_compile_features(action_cancel_test_client PRIVATE cxx_std_17)
@@ -72,6 +76,7 @@ target_compile_features(runtime_data_loop_review PRIVATE cxx_std_17)
 install(TARGETS
   runtime_node
   sensor_sim_node
+  inference_node
   heartbeat_monitor_node
   watchdog_node
   action_cancel_test_client

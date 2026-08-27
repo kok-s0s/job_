@@ -152,6 +152,7 @@ sleep 4
 wait_for_topic /robot/imu
 wait_for_topic /robot/joint_states
 wait_for_topic /runtime/heartbeat
+wait_for_topic /runtime/inference_score
 wait_for_service /runtime/reset_fault
 wait_for_service /runtime/query_status
 wait_for_service /runtime/apply_event
@@ -181,6 +182,10 @@ timeout 10s ros2 topic echo \
 echo "[topic] /runtime/heartbeat --once"
 HEARTBEAT_OUTPUT_FILE=$(mktemp)
 timeout 10s ros2 topic echo /runtime/heartbeat --once >"${HEARTBEAT_OUTPUT_FILE}" 2>&1 || true
+
+echo "[topic] /runtime/inference_score --once"
+INFERENCE_OUTPUT_FILE=$(mktemp)
+timeout 10s ros2 topic echo /runtime/inference_score --once >"${INFERENCE_OUTPUT_FILE}" 2>&1 || true
 
 echo "[qos] /robot/imu"
 IMU_HZ_OUTPUT_FILE=$(mktemp)
@@ -275,6 +280,7 @@ cat "${OUTPUT_FILE}"
 cat "${IMU_OUTPUT_FILE}"
 cat "${JOINT_OUTPUT_FILE}"
 cat "${HEARTBEAT_OUTPUT_FILE}"
+cat "${INFERENCE_OUTPUT_FILE}"
 cat "${IMU_HZ_OUTPUT_FILE}"
 cat "${JOINT_HZ_OUTPUT_FILE}"
 cat "${WATCHDOG_OUTPUT_FILE}"
@@ -521,6 +527,15 @@ if ! grep -q "node=.*seq=.*stamp_ms=.*session_id=.*status=.*message=" "${HEARTBE
   exit 1
 fi
 
+if ! grep -q "model=tiny_robot_score session_id=.*score=.*status=.*features=" "${INFERENCE_OUTPUT_FILE}" ||
+  ! grep -q "\[inference\] node=inference_node model=tiny_robot_score session_id=.*score=.*status=.*features=" "${OUTPUT_FILE}" ||
+  ! grep -q "\[qos\] topic=/runtime/inference_score role=inference_result" "${OUTPUT_FILE}"; then
+  echo "/runtime/inference_score output was not observed" >&2
+  rm -f "${OUTPUT_FILE}"
+  rm -f "${INFERENCE_OUTPUT_FILE}"
+  exit 1
+fi
+
 if ! grep -q "\[heartbeat\] node=sensor_sim_node" "${OUTPUT_FILE}" ||
   ! grep -q "\[heartbeat\] node=runtime_node" "${OUTPUT_FILE}" ||
   ! grep -q "\[heartbeat\] node=heartbeat_monitor_node" "${OUTPUT_FILE}" ||
@@ -759,6 +774,7 @@ rm -f "${IMU_OUTPUT_FILE}"
 rm -f "${IMU_RELIABLE_MISMATCH_OUTPUT_FILE}"
 rm -f "${JOINT_OUTPUT_FILE}"
 rm -f "${HEARTBEAT_OUTPUT_FILE}"
+rm -f "${INFERENCE_OUTPUT_FILE}"
 rm -f "${IMU_HZ_OUTPUT_FILE}"
 rm -f "${JOINT_HZ_OUTPUT_FILE}"
 rm -f "${WATCHDOG_OUTPUT_FILE}"
@@ -790,4 +806,4 @@ rm -f "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"
 rm -f "${SESSION_TRACE_REVIEW_OUTPUT_FILE}"
 rm -f "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"
 rm -f "${DATA_LOOP_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, QoS interview review, rosbag recording review, session trace review, fault reproduction review, data loop review, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, QoS interview review, rosbag recording review, session trace review, fault reproduction review, data loop review, inference node, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
