@@ -28,6 +28,8 @@ score = robot_features[0] * 0.2 + robot_features[1] * -0.1 + robot_features[2] *
 input=[0.500,-1.000,0.200] -> score=0.390 status=OK
 ```
 
+`onnx_inference_stats_demo` records successful inference count, average duration, maximum duration, and failure count.
+
 ## Verify
 
 ```bash
@@ -43,5 +45,7 @@ Expected output:
 [output] name=anomaly_score elem_type=float shape=[1,1]
 [ok] onnx model metadata loaded
 [ok] fixed input inference stable
-[ok] ONNX Runtime C++ demo verified: model generated, C++ loader built, input/output shapes inspected, fixed input inference stable
+[inference_stats] count=3 avg_ms=... max_ms=... failures=1
+[ok] inference timing stats ready
+[ok] ONNX Runtime C++ demo verified: model generated, C++ loader built, input/output shapes inspected, fixed input inference stable, timing stats ready
 ```

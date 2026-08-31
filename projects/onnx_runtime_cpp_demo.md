@@ -5,6 +5,7 @@
 - [2026-08-25：C++ 加载 ONNX 模型元信息](/roadmap/daily/2026-08-25)
 - [2026-08-26：封装固定输入推理函数](/roadmap/daily/2026-08-26)
 - [2026-08-27：接入 ROS2 推理节点](/roadmap/daily/2026-08-27)
+- [2026-08-28：增加推理耗时统计](/roadmap/daily/2026-08-28)
 
 这是第 7 周“ONNX Runtime C++ 推理部署”的起步项目。当前先完成两个可验证目标：生成一个小 ONNX 模型，并用 C++ 加载模型文件、解析输入输出 shape 和图结构。
 
@@ -21,6 +22,7 @@ projects/onnx_runtime_cpp_demo
 - `src/onnx_model_inspector.cpp` 用 C++17 读取 ONNX 文件并解析 ModelProto / GraphProto / ValueInfo / Node / Tensor 的关键字段。
 - `src/tiny_robot_inference.hpp` 封装固定输入推理函数，输出稳定 score 和状态。
 - `src/onnx_inference_demo.cpp` 验证固定输入 `[0.500,-1.000,0.200]` 的结果为 `score=0.390 status=OK`。
+- `src/onnx_inference_stats_demo.cpp` 验证推理次数、平均耗时、最大耗时和失败次数统计。
 - `scripts/verify_onnx_runtime_cpp_demo.sh` 负责生成模型、构建 C++ 程序、运行检查并 grep 关键验收输出。
 
 ## 验收命令
@@ -41,6 +43,8 @@ bash scripts/verify_onnx_runtime_cpp_demo.sh
 [ok] onnx model metadata loaded
 [inference] model=tiny_robot_score input=[0.500,-1.000,0.200] score=0.390 status=OK
 [ok] fixed input inference stable
+[inference_stats] count=3 avg_ms=... max_ms=... failures=1
+[ok] inference timing stats ready
 ```
 
 ## 面试表达

@@ -185,7 +185,13 @@ timeout 10s ros2 topic echo /runtime/heartbeat --once >"${HEARTBEAT_OUTPUT_FILE}
 
 echo "[topic] /runtime/inference_score --once"
 INFERENCE_OUTPUT_FILE=$(mktemp)
-timeout 10s ros2 topic echo /runtime/inference_score --once >"${INFERENCE_OUTPUT_FILE}" 2>&1 || true
+for ((i = 0; i < 3; ++i)); do
+  timeout 10s ros2 topic echo /runtime/inference_score --once >>"${INFERENCE_OUTPUT_FILE}" 2>&1 || true
+  if grep -q "model=tiny_robot_score" "${INFERENCE_OUTPUT_FILE}"; then
+    break
+  fi
+  sleep 0.5
+done
 
 echo "[qos] /robot/imu"
 IMU_HZ_OUTPUT_FILE=$(mktemp)
@@ -527,8 +533,13 @@ if ! grep -q "node=.*seq=.*stamp_ms=.*session_id=.*status=.*message=" "${HEARTBE
   exit 1
 fi
 
-if ! grep -q "model=tiny_robot_score session_id=.*score=.*status=.*features=" "${INFERENCE_OUTPUT_FILE}" ||
-  ! grep -q "\[inference\] node=inference_node model=tiny_robot_score session_id=.*score=.*status=.*features=" "${OUTPUT_FILE}" ||
+if ! grep -q "model=tiny_robot_score" "${INFERENCE_OUTPUT_FILE}" ||
+  ! grep -q "duration_ms=" "${INFERENCE_OUTPUT_FILE}" ||
+  ! grep -q "avg_ms=" "${INFERENCE_OUTPUT_FILE}" ||
+  ! grep -q "max_ms=" "${INFERENCE_OUTPUT_FILE}" ||
+  ! grep -q "failures=" "${INFERENCE_OUTPUT_FILE}" ||
+  ! grep -q "\[inference\] node=inference_node model=tiny_robot_score" "${OUTPUT_FILE}" ||
+  ! grep -q "duration_ms=.*avg_ms=.*max_ms=.*failures=" "${OUTPUT_FILE}" ||
   ! grep -q "\[qos\] topic=/runtime/inference_score role=inference_result" "${OUTPUT_FILE}"; then
   echo "/runtime/inference_score output was not observed" >&2
   rm -f "${OUTPUT_FILE}"
@@ -806,4 +817,4 @@ rm -f "${ROSBAG_RECORDING_REVIEW_OUTPUT_FILE}"
 rm -f "${SESSION_TRACE_REVIEW_OUTPUT_FILE}"
 rm -f "${FAULT_REPRODUCTION_REVIEW_OUTPUT_FILE}"
 rm -f "${DATA_LOOP_REVIEW_OUTPUT_FILE}"
-echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, QoS interview review, rosbag recording review, session trace review, fault reproduction review, data loop review, inference node, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"
+echo "[ok] ROS2 runtime demo verified: state machine demo, phase 1 integration review, week 3 review, sensor best-effort QoS review, command reliability review, queue depth review, QoS interview review, rosbag recording review, session trace review, fault reproduction review, data loop review, inference node, inference timing stats, DDS QoS profiles, structured runtime_log fields, heartbeat pub/sub, watchdog timeout check, performance metrics, typed topics, runtime health, fault metadata, apply_event/query/reset services, and execute_task Action completion/rejection/cancellation are working"

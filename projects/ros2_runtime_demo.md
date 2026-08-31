@@ -438,6 +438,14 @@ colcon=/usr/bin/colcon
 - `runtime_demo.launch.py` 已启动 `inference_node`，主验收脚本已检查推理 Topic 和 `[inference]` 日志。
 - 今日复盘目标是把“离线推理函数如何进入 ROS2 Topic 链路”讲清楚。
 
+2026-08-28 练习重点：
+
+- 第 7 周周五给推理链路增加耗时统计，输出单次耗时、平均耗时、最大耗时和失败次数。
+- `inference_node` 的 `/runtime/inference_score` 已包含 `duration_ms`、`avg_ms`、`max_ms` 和 `failures` 字段。
+- `[inference]` 日志同步输出统计字段，方便和 `session_id`、传感器输入、rosbag 记录关联。
+- 主验收脚本已检查推理统计字段，最终 `[ok]` 行包含 `inference timing stats`。
+- 今日复盘目标是把“推理部署不只看结果，还要持续观察耗时和失败次数”讲清楚。
+
 注意：Codex 当前是通过提升权限进入这个 WSL 发行版完成验证的；普通 PowerShell 里如果 `wsl -d Ubuntu` 仍提示找不到发行版，需要在你的普通用户上下文中重新初始化/安装 Ubuntu，或把现有发行版导入普通用户。
 
 ## 关键点

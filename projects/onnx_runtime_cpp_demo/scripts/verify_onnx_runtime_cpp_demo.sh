@@ -30,6 +30,13 @@ INFERENCE_OUTPUT_FILE=$(mktemp)
 grep -q "\[inference\] model=tiny_robot_score input=\[0.500,-1.000,0.200\] score=0.390 status=OK" "${INFERENCE_OUTPUT_FILE}"
 grep -q "\[ok\] fixed input inference stable" "${INFERENCE_OUTPUT_FILE}"
 
+echo "[run] inference timing stats"
+STATS_OUTPUT_FILE=$(mktemp)
+./build/onnx_inference_stats_demo | tee "${STATS_OUTPUT_FILE}"
+grep -q "\[inference_stats\] count=3 avg_ms=.* max_ms=.* failures=1" "${STATS_OUTPUT_FILE}"
+grep -q "\[ok\] inference timing stats ready" "${STATS_OUTPUT_FILE}"
+
 rm -f "${OUTPUT_FILE}"
 rm -f "${INFERENCE_OUTPUT_FILE}"
-echo "[ok] ONNX Runtime C++ demo verified: model generated, C++ loader built, input/output shapes inspected, fixed input inference stable"
+rm -f "${STATS_OUTPUT_FILE}"
+echo "[ok] ONNX Runtime C++ demo verified: model generated, C++ loader built, input/output shapes inspected, fixed input inference stable, timing stats ready"

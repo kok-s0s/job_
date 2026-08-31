@@ -18,6 +18,7 @@
 
 已落地入口：
 - [ONNX Runtime C++ Demo](onnx_runtime_cpp_demo.md)：生成小 ONNX 模型，并用 C++ 解析模型输入输出 shape、节点和 initializer。
+- [SocketCAN vcan Demo](socketcan_vcan_demo.md)：解析 CAN 帧结构，并整理 SocketCAN / vcan 基础命令。
 
 对应计划：[工作日 2 小时量化学习计划](/roadmap/weekday_2h_plan)
 
