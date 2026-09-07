@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<robot name="two_joint_arm">
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.05" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.30 0.30 0.10"/>
+      </geometry>
+      <material name="runtime_gray">
+        <color rgba="0.25 0.28 0.32 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="shoulder_link">
+    <visual>
+      <origin xyz="0.25 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.50 0.06 0.06"/>
+      </geometry>
+      <material name="arm_blue">
+        <color rgba="0.10 0.38 0.72 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <link name="elbow_link">
+    <visual>
+      <origin xyz="0.20 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.40 0.05 0.05"/>
+      </geometry>
+      <material name="tool_green">
+        <color rgba="0.10 0.55 0.32 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="shoulder_yaw_joint" type="revolute">
+    <parent link="base_link"/>
+    <child link="shoulder_link"/>
+    <origin xyz="0 0 0.12" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.57" upper="1.57" effort="30" velocity="1.2"/>
+  </joint>
+
+  <joint name="elbow_pitch_joint" type="revolute">
+    <parent link="shoulder_link"/>
+    <child link="elbow_link"/>
+    <origin xyz="0.50 0 0" rpy="0 0 0"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-1.20" upper="1.20" effort="20" velocity="1.5"/>
+  </joint>
+</robot>
