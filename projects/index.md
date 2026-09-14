@@ -19,7 +19,8 @@
 已落地入口：
 - [ONNX Runtime C++ Demo](onnx_runtime_cpp_demo.md)：生成小 ONNX 模型，并用 C++ 解析模型输入输出 shape、节点和 initializer。
 - [SocketCAN vcan Demo](socketcan_vcan_demo.md)：解析 CAN 帧结构，模拟 vcan 收发、执行器状态、50Hz 控制命令和故障接入。
-- [URDF Two Joint Arm Demo](urdf_two_joint_arm_demo.md)：定义两关节机械臂 URDF，并验证 link、joint、axis、limit 结构。
+- [URDF Two Joint Arm Demo](urdf_two_joint_arm_demo.md)：定义两关节机械臂 URDF，并验证 link、joint、axis、limit、TF 树和传感器 frame。
+- [Gazebo Model Smoke Demo](gazebo_model_smoke_demo.md)：定义 Gazebo world 冒烟验证，检查光源、地面、模型、link、joint 和启动命令。
 
 对应计划：[工作日 2 小时量化学习计划](/roadmap/weekday_2h_plan)
 

@@ -64,13 +64,13 @@ int main(int argc, char** argv) {
         const auto links = captureNames(urdf, std::regex("<link\\s+name=\"([^\"]+)\""));
         const auto joints = captureNames(urdf, std::regex("<joint\\s+name=\"([^\"]+)\""));
 
-        for (const auto& link : {"base_link", "shoulder_link", "elbow_link", "tool0"}) {
+        for (const auto& link : {"base_link", "shoulder_link", "elbow_link", "tool0", "imu_link"}) {
             if (!contains(links, link)) {
                 throw std::runtime_error(std::string("missing link: ") + link);
             }
         }
 
-        for (const auto& joint : {"shoulder_yaw_joint", "elbow_pitch_joint", "tool_mount_joint"}) {
+        for (const auto& joint : {"shoulder_yaw_joint", "elbow_pitch_joint", "tool_mount_joint", "imu_mount_joint"}) {
             if (!contains(joints, joint)) {
                 throw std::runtime_error(std::string("missing joint: ") + joint);
             }
@@ -82,20 +82,23 @@ int main(int argc, char** argv) {
         requireText(urdf, "<child link=\"elbow_link\"/>");
         requireText(urdf, "<parent link=\"elbow_link\"/>");
         requireText(urdf, "<child link=\"tool0\"/>");
+        requireText(urdf, "<child link=\"imu_link\"/>");
         requireText(urdf, "<axis xyz=\"0 0 1\"/>");
         requireText(urdf, "<axis xyz=\"0 1 0\"/>");
         requireText(urdf, "<limit lower=\"-1.57\" upper=\"1.57\" effort=\"30\" velocity=\"1.2\"/>");
         requireText(urdf, "<limit lower=\"-1.20\" upper=\"1.20\" effort=\"20\" velocity=\"1.5\"/>");
         requireText(urdf, "<joint name=\"tool_mount_joint\" type=\"fixed\">");
-        requireCount(urdf, "<inertial>", 4);
-        requireCount(urdf, "<collision>", 4);
+        requireText(urdf, "<joint name=\"imu_mount_joint\" type=\"fixed\">");
+        requireCount(urdf, "<inertial>", 5);
+        requireCount(urdf, "<collision>", 5);
 
         std::cout << "[urdf] robot=two_joint_arm links=" << links.size() << " joints=" << joints.size() << "\n";
-        std::cout << "[urdf_link] base_link shoulder_link elbow_link tool0 inertial=4 collision=4\n";
+        std::cout << "[urdf_link] base_link shoulder_link elbow_link tool0 imu_link inertial=5 collision=5\n";
         std::cout << "[urdf_joint] shoulder_yaw_joint type=revolute parent=base_link child=shoulder_link axis=0,0,1 limit=-1.57..1.57\n";
         std::cout << "[urdf_joint] elbow_pitch_joint type=revolute parent=shoulder_link child=elbow_link axis=0,1,0 limit=-1.20..1.20\n";
         std::cout << "[urdf_joint] tool_mount_joint type=fixed parent=elbow_link child=tool0\n";
-        std::cout << "[ok] two-joint URDF links joints limits and XML structure verified\n";
+        std::cout << "[urdf_joint] imu_mount_joint type=fixed parent=elbow_link child=imu_link origin=0.25,0,0.08\n";
+        std::cout << "[ok] two-joint URDF links joints limits sensor frame and XML structure verified\n";
     } catch (const std::exception& ex) {
         std::cerr << "[error] " << ex.what() << "\n";
         return 1;
